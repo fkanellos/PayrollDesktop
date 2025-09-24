@@ -19,7 +19,10 @@ data class PayrollState(
     val payrollResult: PayrollResponse? = null,
     val isCalculating: Boolean = false,
     val showDatePicker: Boolean = false,
-    val datePickerType: DatePickerType = DatePickerType.START
+    val datePickerType: DatePickerType = DatePickerType.START,
+    // Enhanced fields
+    val showStartDatePicker: Boolean = false,
+    val showEndDatePicker: Boolean = false
 ) : UiState
 
 enum class DatePickerType {
@@ -37,12 +40,18 @@ sealed class PayrollAction : UiAction {
     // Employee selection
     data class SelectEmployee(val employee: Employee) : PayrollAction()
 
-    // Date selection
+    // Date selection - Enhanced με calendar picker support
     data class SetStartDate(val date: LocalDateTime) : PayrollAction()
     data class SetEndDate(val date: LocalDateTime) : PayrollAction()
     data class ShowDatePicker(val type: DatePickerType) : PayrollAction()
     object HideDatePicker : PayrollAction()
     object SetDefaultDateRange : PayrollAction()
+
+    // New calendar picker actions
+    object ShowStartDatePicker : PayrollAction()
+    object ShowEndDatePicker : PayrollAction()
+    object HideStartDatePicker : PayrollAction()
+    object HideEndDatePicker : PayrollAction()
 
     // Payroll calculation
     object CalculatePayroll : PayrollAction()
