@@ -10,6 +10,7 @@ import com.payroll.app.desktop.domain.models.EmployeeInfo
 import com.payroll.app.desktop.domain.models.PayrollRequest
 import com.payroll.app.desktop.domain.models.PayrollResponse
 import com.payroll.app.desktop.domain.models.PayrollSummary
+import com.payroll.app.desktop.utils.DateRanges
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -110,13 +111,11 @@ class PayrollViewModel(
             }
 
             PayrollAction.SetDefaultDateRange -> {
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                val twoWeeksAgo = now.date.minus(kotlinx.datetime.DatePeriod(days = 14))
-                val startDateTime = LocalDateTime(twoWeeksAgo, now.time)
+                val (startDateTime, endDateTime) = DateRanges.twoWorkWeeks()
 
                 currentState.copy(
                     startDate = startDateTime,
-                    endDate = now,
+                    endDate = endDateTime,
                     error = null
                 )
             }

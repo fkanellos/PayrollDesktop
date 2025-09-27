@@ -1,5 +1,12 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.payroll.app.desktop.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,8 +36,15 @@ import com.payroll.app.desktop.ui.components.cards.*
 import com.payroll.app.desktop.ui.components.dropdowns.*
 import com.payroll.app.desktop.ui.theme.PayrollColors
 import com.payroll.app.desktop.ui.theme.PayrollTheme
+import com.payroll.app.desktop.utils.DateRanges
+import com.payroll.app.desktop.utils.toEpochMillis
 import com.payroll.app.desktop.utils.toEuroString
+import com.payroll.app.desktop.utils.toGreekDateString
+import com.payroll.app.desktop.utils.toLocalDate
+import com.payroll.app.desktop.utils.toReadableString
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -109,6 +124,7 @@ fun PayrollScreen(
     if (uiState.showStartDatePicker) {
         DatePickerDialog(
             title = "Επιλογή Ημερομηνίας Έναρξης",
+            initialDate = uiState.startDate, // 🔧 ΠΡΟΣΘΗΚΗ: Προεπιλεγμένη ημερομηνία
             onDateSelected = { date ->
                 viewModel.handleAction(PayrollAction.SetStartDate(date))
                 viewModel.handleAction(PayrollAction.HideStartDatePicker)
@@ -120,6 +136,7 @@ fun PayrollScreen(
     if (uiState.showEndDatePicker) {
         DatePickerDialog(
             title = "Επιλογή Ημερομηνίας Λήξης",
+            initialDate = uiState.endDate, // 🔧 ΠΡΟΣΘΗΚΗ: Προεπιλεγμένη ημερομηνία
             onDateSelected = { date ->
                 viewModel.handleAction(PayrollAction.SetEndDate(date))
                 viewModel.handleAction(PayrollAction.HideEndDatePicker)
@@ -149,11 +166,15 @@ private fun PayrollHeader() {
     }
 }
 
+// Updated PayrollCalculationForm με collapsible date selection
+
 @Composable
 private fun PayrollCalculationForm(
     uiState: PayrollState,
     onAction: (PayrollAction) -> Unit
 ) {
+    var showCustomDates by remember { mutableStateOf(false) }
+
     PayrollCard(
         title = "Υπολογισμός Μισθοδοσίας",
         subtitle = "Επιλέξτε εργαζόμενο και περίοδο"
@@ -162,45 +183,78 @@ private fun PayrollCalculationForm(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Employee Selection
-            EmployeeDropdown(
+            EnhancedEmployeeDropdown(
                 employees = uiState.employees,
                 selectedEmployee = uiState.selectedEmployee,
                 onEmployeeSelected = { onAction(PayrollAction.SelectEmployee(it)) },
                 enabled = !uiState.isLoading && !uiState.isCalculating
             )
 
-            // Selected Employee Info Card
-            uiState.selectedEmployee?.let { employee ->
-                SelectedEmployeeCard(employee = employee)
-            }
-
-            // Date Range Selection με Calendar Pickers
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                CalendarDateField(
-                    modifier = Modifier.weight(1f),
-                    label = "Από (Ημερομηνία)",
-                    date = uiState.startDate,
-                    onClick = { onAction(PayrollAction.ShowStartDatePicker) },
-                    enabled = !uiState.isLoading && !uiState.isCalculating
-                )
-
-                CalendarDateField(
-                    modifier = Modifier.weight(1f),
-                    label = "Έως (Ημερομηνία)",
-                    date = uiState.endDate,
-                    onClick = { onAction(PayrollAction.ShowEndDatePicker) },
-                    enabled = !uiState.isLoading && !uiState.isCalculating
-                )
-            }
-
-            // Helper text
-            Text(
-                text = "💡 Default: σήμερα - 14 μέρες",
-                fontSize = 12.sp,
-                color = PayrollColors.Info
+            // Quick Period Selection
+            PredefinedPeriodDropdown(
+                currentStartDate = uiState.startDate,
+                currentEndDate = uiState.endDate,
+                onPeriodSelected = { (start, end) ->
+                    onAction(PayrollAction.SetStartDate(start))
+                    onAction(PayrollAction.SetEndDate(end))
+                    // Όταν επιλέγει από dropdown, κλείνουμε τις custom dates
+                    showCustomDates = false
+                },
+                modifier = Modifier.fillMaxWidth()
             )
+
+            // Toggle για Custom Dates
+            CustomDateToggle(
+                isExpanded = showCustomDates,
+                onToggle = { showCustomDates = !showCustomDates },
+                hasCustomDates = uiState.startDate != null && uiState.endDate != null
+            )
+
+            // Collapsible Custom Date Selection
+            AnimatedVisibility(
+                visible = showCustomDates,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text(
+                        text = "📅 Προσαρμοσμένες Ημερομηνίες",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = PayrollColors.Primary
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CalendarDateField(
+                            modifier = Modifier.weight(1f),
+                            label = "Από (Ημερομηνία)",
+                            date = uiState.startDate,
+                            onClick = { onAction(PayrollAction.ShowStartDatePicker) },
+                            enabled = !uiState.isLoading && !uiState.isCalculating
+                        )
+
+                        CalendarDateField(
+                            modifier = Modifier.weight(1f),
+                            label = "Έως (Ημερομηνία)",
+                            date = uiState.endDate,
+                            onClick = { onAction(PayrollAction.ShowEndDatePicker) },
+                            enabled = !uiState.isLoading && !uiState.isCalculating
+                        )
+                    }
+
+                    // Helper text για custom dates
+                    Text(
+                        text = "💡 Επιλέξτε συγκεκριμένες ημερομηνίες για προσαρμοσμένη περίοδο",
+                        fontSize = 12.sp,
+                        color = PayrollColors.Info
+                    )
+                }
+            }
 
             // Calculate Button
             PayrollButton(
@@ -219,44 +273,237 @@ private fun PayrollCalculationForm(
 }
 
 @Composable
-private fun SelectedEmployeeCard(employee: Employee) {
+private fun CustomDateToggle(
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    hasCustomDates: Boolean,
+    modifier: Modifier = Modifier
+) {
     Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onToggle() },
         colors = CardDefaults.cardColors(
-            containerColor = PayrollColors.Primary.copy(alpha = 0.1f)
+            containerColor = if (isExpanded) PayrollColors.Primary.copy(alpha = 0.1f) else PayrollColors.Surface
         ),
-        border = BorderStroke(1.dp, PayrollColors.Primary.copy(alpha = 0.3f))
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isExpanded) PayrollColors.Primary.copy(alpha = 0.3f) else PayrollColors.DividerColor
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Default.Person,
-                contentDescription = null,
-                tint = PayrollColors.Primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Επιλεγμένος: ${employee.name}",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = PayrollColors.Primary
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (isExpanded) Icons.Default.CalendarViewMonth else Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = PayrollColors.Primary,
+                    modifier = Modifier.size(20.dp)
                 )
-                Text(
-                    text = "📧 ${employee.email}",
-                    fontSize = 14.sp,
-                    color = PayrollColors.TextSecondary
-                )
-                Text(
-                    text = "🗓️ Calendar: ${employee.calendarId.take(25)}...",
-                    fontSize = 12.sp,
-                    color = PayrollColors.TextSecondary
+
+                Column {
+                    Text(
+                        text = "Προσαρμοσμένες Ημερομηνίες",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = PayrollColors.OnSurface
+                    )
+
+                    if (hasCustomDates && !isExpanded) {
+                        Text(
+                            text = "Ενεργές",
+                            fontSize = 12.sp,
+                            color = PayrollColors.Success
+                        )
+                    } else if (!hasCustomDates) {
+                        Text(
+                            text = "Επιλέξτε συγκεκριμένες ημερομηνίες",
+                            fontSize = 12.sp,
+                            color = PayrollColors.TextSecondary
+                        )
+                    }
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (hasCustomDates && !isExpanded) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = "Ενεργές",
+                        tint = PayrollColors.Success,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Icon(
+                    if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Σύμπτυξη" else "Επέκταση",
+                    tint = PayrollColors.Primary
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun EnhancedEmployeeDropdown(
+    employees: List<Employee>,
+    selectedEmployee: Employee?,
+    onEmployeeSelected: (Employee) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "Εργαζόμενος",
+    enabled: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // 🔧 Debug και fallback για το display value
+    val displayValue = when {
+        selectedEmployee?.name?.isNotBlank() == true -> selectedEmployee.name
+        selectedEmployee != null -> "Εργαζόμενος (ID: ${selectedEmployee.id})"
+        else -> ""
+    }
+
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = PayrollColors.OnSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = {
+                if (enabled) expanded = !expanded
+            }
+        ) {
+            OutlinedTextField(
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                readOnly = true,
+                value = displayValue,
+                onValueChange = {},
+                placeholder = if (selectedEmployee == null) {
+                    {
+                        Text(
+                            "Επιλέξτε εργαζόμενο...",
+                            color = PayrollColors.TextSecondary
+                        )
+                    }
+                } else null,
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        tint = if (selectedEmployee != null) PayrollColors.Primary else PayrollColors.TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Dropdown Arrow",
+                        tint = PayrollColors.Primary
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PayrollColors.Primary,
+                    unfocusedBorderColor = PayrollColors.DividerColor,
+                    disabledBorderColor = PayrollColors.DividerColor.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(8.dp),
+                enabled = enabled,
+                textStyle = TextStyle(
+                    fontSize = 14.sp,
+                    color = if (selectedEmployee != null) PayrollColors.OnSurface else PayrollColors.TextSecondary
+                )
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                if (employees.isEmpty()) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Δεν βρέθηκαν εργαζόμενοι",
+                                color = PayrollColors.TextSecondary
+                            )
+                        },
+                        onClick = { }
+                    )
+                } else {
+                    employees.forEach { employee ->
+                        val isSelected = selectedEmployee?.id == employee.id
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = employee.name.ifBlank { "Εργαζόμενος ${employee.id}" },
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 14.sp,
+                                            color = if (isSelected) PayrollColors.Primary else PayrollColors.OnSurface
+                                        )
+                                        if (employee.email.isNotBlank()) {
+                                            Text(
+                                                text = "📧 ${employee.email}",
+                                                fontSize = 12.sp,
+                                                color = PayrollColors.TextSecondary
+                                            )
+                                        }
+                                    }
+
+                                    if (isSelected) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = "Επιλεγμένος",
+                                            tint = PayrollColors.Primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                onEmployeeSelected(employee)
+                                expanded = false
+                            },
+                            colors = MenuDefaults.itemColors(
+                                textColor = if (isSelected) PayrollColors.Primary else PayrollColors.OnSurface
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // Status indicator βάσει της επιλογής
+        selectedEmployee?.let { employee ->
+            Text(
+                text = "✅ Επιλεγμένος: ${employee.name.ifBlank { "Εργαζόμενος ${employee.id}" }}",
+                fontSize = 12.sp,
+                color = PayrollColors.Success,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }
@@ -304,7 +551,8 @@ private fun CalendarDateField(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = date?.date?.toString() ?: "Επιλέξτε ημερομηνία",
+                        // 🔧 FIX: Χρησιμοποιούμε το σωστό format dd/mm/yyyy
+                        text = date?.toGreekDateString() ?: "Επιλέξτε ημερομηνία",
                         fontSize = 14.sp,
                         color = if (date != null) PayrollColors.OnSurface else PayrollColors.TextSecondary
                     )
@@ -733,10 +981,14 @@ private fun ErrorSection(
 @Composable
 private fun DatePickerDialog(
     title: String,
+    initialDate: kotlinx.datetime.LocalDateTime?, // 🔧 ΠΡΟΣΘΗΚΗ: Προεπιλεγμένη ημερομηνία
     onDateSelected: (kotlinx.datetime.LocalDateTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val datePickerState = rememberDatePickerState()
+    // 🔧 FIX: Ρυθμίζουμε την αρχική ημερομηνία του picker
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate?.toEpochMillis() ?: Clock.System.now().toEpochMilliseconds()
+    )
 
     DatePickerDialog(
         onDismissRequest = onDismiss,
@@ -745,8 +997,14 @@ private fun DatePickerDialog(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(millis)
-                        val localDateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-                        onDateSelected(localDateTime)
+                        val localDate = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                        // Κρατάμε την ώρα από το original date ή ρυθμίζουμε default (12:00)
+                        val finalDateTime = if (initialDate != null) {
+                            LocalDateTime(localDate.date, initialDate.time)
+                        } else {
+                            LocalDateTime(localDate.date, LocalTime(12, 0))
+                        }
+                        onDateSelected(finalDateTime)
                     }
                 }
             ) {
@@ -766,8 +1024,205 @@ private fun DatePickerDialog(
                     text = title,
                     modifier = Modifier.padding(16.dp)
                 )
+            },
+            headline = {
+                // 🔧 ΠΡΟΣΘΗΚΗ: Εμφανίζουμε το επιλεγμένο date σε Greek format
+                Text(
+                    text = datePickerState.selectedDateMillis?.let {
+                        it.toLocalDate().toGreekDateString()
+                    } ?: "Επιλέξτε ημερομηνία",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = PayrollColors.Primary
+                )
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PredefinedPeriodDropdown(
+    currentStartDate: LocalDateTime?,
+    currentEndDate: LocalDateTime?,
+    onPeriodSelected: (Pair<LocalDateTime, LocalDateTime>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val periods = remember {
+        listOf(
+            "2 Εργάσιμες Εβδομάδες" to DateRanges.twoWorkWeeks(),
+            "Τρέχουσα Εβδομάδα" to DateRanges.thisWorkWeek(),
+            "Προηγούμενη Εβδομάδα" to DateRanges.lastWorkWeek(),
+            "Τελευταίες 2 Εβδομάδες" to DateRanges.lastTwoWorkWeeks(),
+            "Τρέχων Μήνας" to DateRanges.thisMonth(),
+            "Προηγούμενος Μήνας" to DateRanges.lastMonth(),
+            "Τελευταίες 10 Εργάσιμες" to DateRanges.lastWorkDays(10),
+            "Σήμερα" to DateRanges.today()
+        )
+    }
+
+    // 🎯 Smart detection: Βρίσκουμε αν η τρέχουσα επιλογή ταιριάζει με κάποια προκαθορισμένη περίοδο
+    val detectedPeriod = remember(currentStartDate, currentEndDate) {
+        if (currentStartDate != null && currentEndDate != null) {
+            periods.find { (_, range) ->
+                // Συγκρίνουμε τις ημερομηνίες (αγνοούμε τις ώρες για την σύγκριση)
+                range.first.date == currentStartDate.date &&
+                        range.second.date == currentEndDate.date
+            }?.first
+        } else null
+    }
+
+    // Display text που δείχνει είτε το detected period είτε τις custom ημερομηνίες
+    val displayText = when {
+        detectedPeriod != null -> {
+            detectedPeriod // Μόνο το όνομα της περιόδου για cleaner look
+        }
+        currentStartDate != null && currentEndDate != null -> {
+            "Προσαρμοσμένη Περίοδος"
+        }
+        else -> ""
+    }
+
+    // Subtitle text που δείχνει τις ημερομηνίες
+    val subtitleText = when {
+        currentStartDate != null && currentEndDate != null -> {
+            "${currentStartDate.toGreekDateString()} - ${currentEndDate.toGreekDateString()}"
+        }
+        else -> "Επιλέξτε περίοδο..."
+    }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Γρήγορη Επιλογή Περιόδου",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = PayrollColors.OnSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                readOnly = true,
+                value = displayText,
+                onValueChange = {},
+                placeholder = if (displayText.isEmpty()) {
+                    {
+                        Text(
+                            subtitleText,
+                            color = PayrollColors.TextSecondary
+                        )
+                    }
+                } else null,
+                supportingText = if (displayText.isNotEmpty()) {
+                    {
+                        Text(
+                            text = subtitleText,
+                            fontSize = 12.sp,
+                            color = PayrollColors.TextSecondary
+                        )
+                    }
+                } else null,
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        tint = PayrollColors.Primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Dropdown Arrow",
+                        tint = PayrollColors.Primary
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PayrollColors.Primary,
+                    unfocusedBorderColor = PayrollColors.DividerColor
+                ),
+                shape = RoundedCornerShape(8.dp),
+                textStyle = TextStyle(
+                    fontSize = 14.sp,
+                    color = if (displayText.isNotEmpty()) PayrollColors.OnSurface else PayrollColors.TextSecondary
+                )
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                periods.forEach { (name, dateRange) ->
+                    val isSelected = detectedPeriod == name
+
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = name,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 14.sp,
+                                        color = if (isSelected) PayrollColors.Primary else PayrollColors.OnSurface
+                                    )
+                                    Text(
+                                        text = dateRange.toReadableString(),
+                                        fontSize = 12.sp,
+                                        color = PayrollColors.TextSecondary
+                                    )
+                                }
+
+                                if (isSelected) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Επιλεγμένο",
+                                        tint = PayrollColors.Primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onPeriodSelected(dateRange)
+                            expanded = false
+                        },
+                        colors = MenuDefaults.itemColors(
+                            textColor = if (isSelected) PayrollColors.Primary else PayrollColors.OnSurface
+                        )
+                    )
+                }
+            }
+        }
+
+        // 💡 Smart helper text
+        if (detectedPeriod != null) {
+            Text(
+                text = "✅ Προκαθορισμένη περίοδος: $detectedPeriod",
+                fontSize = 12.sp,
+                color = PayrollColors.Success,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        } else if (currentStartDate != null && currentEndDate != null) {
+            Text(
+                text = "🎯 Προσαρμοσμένη περίοδος - μπορείτε να επιλέξετε από τις παραπάνω",
+                fontSize = 12.sp,
+                color = PayrollColors.Info,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 
