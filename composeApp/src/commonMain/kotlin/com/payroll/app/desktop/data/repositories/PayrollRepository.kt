@@ -62,6 +62,10 @@ class PayrollRepository(
     suspend fun testBackendConnection(): RepositoryResult<String> {
         return apiService.testConnection()
     }
+
+    suspend fun downloadPdf(payrollId: String): RepositoryResult<ByteArray> {
+        return apiService.downloadPdf(payrollId)
+    }
 }
 
 /**

@@ -93,6 +93,7 @@ data class EmployeeInfo(
  */
 @Serializable
 data class PayrollResponse(
+    val id: String? = null,
     val employee: EmployeeInfo,
     val period: String,
     val summary: PayrollSummary,

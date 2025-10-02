@@ -5,6 +5,7 @@ import com.payroll.app.desktop.domain.models.PayrollResponse
 expect class ExportService() {
     fun exportToPdf(payrollResult: PayrollResponse): ExportResult
     fun exportToExcel(payrollResult: PayrollResponse): ExportResult
+    fun savePdfBytes(pdfBytes: ByteArray, filename: String): ExportResult
 }
 
 sealed class ExportResult {

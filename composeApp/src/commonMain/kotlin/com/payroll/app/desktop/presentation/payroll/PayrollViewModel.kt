@@ -11,6 +11,7 @@ import com.payroll.app.desktop.domain.models.PayrollRequest
 import com.payroll.app.desktop.domain.models.PayrollResponse
 import com.payroll.app.desktop.domain.models.PayrollSummary
 import com.payroll.app.desktop.utils.DateRanges
+import io.ktor.http.ContentDisposition.Companion.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -344,22 +345,44 @@ class PayrollViewModel(
     private fun exportToPdf(result: PayrollResponse) {
         scope.launch {
             try {
-                emitSideEffect(PayrollEffect.ShowToast("🔄 Δημιουργία PDF..."))
+                emitSideEffect(PayrollEffect.ShowToast("Δημιουργία PDF από backend..."))
 
-                val exportService = ExportService()
-                when (val exportResult = exportService.exportToPdf(result)) {
-                    is com.payroll.app.desktop.core.export.ExportResult.Success -> {
-                        emitSideEffect(
-                            PayrollEffect.ShowToast(
-                                "✅ ${exportResult.fileType} δημιουργήθηκε!\nΣώθηκε: ${exportResult.filePath}"
-                            )
-                        )
-                    }
-                    is com.payroll.app.desktop.core.export.ExportResult.Error -> {
-                        emitSideEffect(PayrollEffect.ShowError(exportResult.message))
-                    }
+                // Check if we have payroll ID
+                val payrollId = result.id
+                if (payrollId == null) {
+                    emitSideEffect(PayrollEffect.ShowError("Δεν βρέθηκε ID payroll"))
+                    return@launch
                 }
 
+                // Download PDF bytes from backend
+                when (val pdfResult = payrollRepository.downloadPdf(payrollId)) {
+                    is RepositoryResult.Success -> {
+                        // Generate filename
+                        val timestamp = Clock.System.now().epochSeconds
+                        val employeeName = result.employee.name.replace(" ", "_")
+                        val filename = "Payroll_${employeeName}_${timestamp}.pdf"
+
+                        // Save to device using platform-specific service
+                        val exportService = ExportService()
+                        when (val saveResult = exportService.savePdfBytes(pdfResult.data, filename)) {
+                            is com.payroll.app.desktop.core.export.ExportResult.Success -> {
+                                emitSideEffect(
+                                    PayrollEffect.ShowToast(
+                                        "PDF δημιουργήθηκε!\nΣώθηκε: ${saveResult.filePath}"
+                                    )
+                                )
+                            }
+                            is com.payroll.app.desktop.core.export.ExportResult.Error -> {
+                                emitSideEffect(PayrollEffect.ShowError(saveResult.message))
+                            }
+                        }
+                    }
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError("Σφάλμα λήψης PDF: ${pdfResult.exception.message}")
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής PDF: ${e.message}"))
             }

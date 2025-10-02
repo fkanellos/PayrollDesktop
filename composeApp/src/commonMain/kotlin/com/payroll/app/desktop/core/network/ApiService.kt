@@ -8,7 +8,14 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+
+@Serializable
+data class PayrollCalculationResponse(
+    val id: String,
+    val payroll: PayrollResponse
+)
 
 /**
  * API Service for communicating with Spring Boot backend
@@ -67,11 +74,14 @@ class PayrollApiService {
      */
     suspend fun calculatePayroll(request: PayrollRequest): RepositoryResult<PayrollResponse> {
         return try {
-            val response: PayrollResponse = httpClient.post("$baseUrl/payroll/calculate") {
+            val response: PayrollCalculationResponse = httpClient.post("$baseUrl/payroll/calculate") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
-            RepositoryResult.Success(response)
+
+            // Return payroll with id set
+            val payrollWithId = response.payroll.copy(id = response.id)
+            RepositoryResult.Success(payrollWithId)
         } catch (e: Exception) {
             RepositoryResult.Error(e)
         }
@@ -102,6 +112,18 @@ class PayrollApiService {
     suspend fun testConnection(): RepositoryResult<String> {
         return try {
             val response: String = httpClient.get("$baseUrl/hello").body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Download PDF for a payroll calculation
+     */
+    suspend fun downloadPdf(payrollId: String): RepositoryResult<ByteArray> {
+        return try {
+            val response: ByteArray = httpClient.get("$baseUrl/api/export/payroll/$payrollId/pdf").body()
             RepositoryResult.Success(response)
         } catch (e: Exception) {
             RepositoryResult.Error(e)

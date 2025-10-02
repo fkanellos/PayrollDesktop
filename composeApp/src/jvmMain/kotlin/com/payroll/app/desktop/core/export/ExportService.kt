@@ -40,6 +40,45 @@ actual class ExportService actual constructor() {
         }
     }
 
+    // ADD THIS NEW METHOD
+    actual fun savePdfBytes(pdfBytes: ByteArray, filename: String): ExportResult {
+        return try {
+            val filePath = saveBytesToFile(filename, pdfBytes)
+            ExportResult.Success(filePath, "PDF File")
+        } catch (e: Exception) {
+            ExportResult.Error("Σφάλμα αποθήκευσης PDF: ${e.message}")
+        }
+    }
+
+    private fun saveBytesToFile(filename: String, bytes: ByteArray): String {
+        val userHome = System.getProperty("user.home") ?: "."
+        val possiblePaths = listOf(
+            "$userHome/Downloads",
+            "$userHome/Desktop",
+            "$userHome/Documents",
+            "."
+        )
+
+        for (path in possiblePaths) {
+            try {
+                val dir = File(path)
+                if (dir.exists() && dir.canWrite()) {
+                    val file = File(dir, filename)
+                    file.writeBytes(bytes)
+                    return file.absolutePath
+                }
+            } catch (_: Exception) {
+                continue
+            }
+        }
+
+        val fallbackDir = File("$userHome/PayrollExports")
+        fallbackDir.mkdirs()
+        val file = File(fallbackDir, filename)
+        file.writeBytes(bytes)
+        return file.absolutePath
+    }
+
     // Helpers (όπως είχες ήδη)
     private fun saveToFile(filename: String, content: String): String {
         val userHome = System.getProperty("user.home") ?: "."
