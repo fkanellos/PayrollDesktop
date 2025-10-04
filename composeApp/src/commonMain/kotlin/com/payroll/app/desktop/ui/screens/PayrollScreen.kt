@@ -64,6 +64,12 @@ fun PayrollScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
+    // 🆕 State για confirmation dialog
+    var showSheetsConfirmation by remember { mutableStateOf(false) }
+    var sheetsConfirmationData by remember {
+        mutableStateOf<Triple<String, String, Boolean>?>(null)
+    }
+
     // Handle side effects
     LaunchedEffect(Unit) {
         viewModel.sideEffect.collect { effect ->
@@ -75,6 +81,15 @@ fun PayrollScreen(
                 is PayrollEffect.ShowError -> {
                     // TODO: Show error dialog
                     println("Error: ${effect.error}")
+                }
+                // 🆕 Handle confirmation request
+                is PayrollEffect.RequestSheetsConfirmation -> {
+                    sheetsConfirmationData = Triple(
+                        effect.payrollId,
+                        effect.message,
+                        effect.isUpdate
+                    )
+                    showSheetsConfirmation = true
                 }
                 else -> { /* Handle other effects */ }
             }
@@ -144,8 +159,113 @@ fun PayrollScreen(
             onDismiss = { viewModel.handleAction(PayrollAction.HideEndDatePicker) }
         )
     }
-}
+    // 🆕 Sheets Confirmation Dialog
+    if (showSheetsConfirmation && sheetsConfirmationData != null) {
+        val (payrollId, message, isUpdate) = sheetsConfirmationData!!
 
+        SheetsConfirmationDialog(
+            message = message,
+            isUpdate = isUpdate,
+            onConfirm = {
+                viewModel.confirmAndSyncToSheets(payrollId)
+                showSheetsConfirmation = false
+                sheetsConfirmationData = null
+            },
+            onDismiss = {
+                showSheetsConfirmation = false
+                sheetsConfirmationData = null
+            }
+        )
+    }
+}
+/**
+ * 🆕 Confirmation Dialog για Google Sheets sync
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SheetsConfirmationDialog(
+    message: String,
+    isUpdate: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                if (isUpdate) Icons.Default.Update else Icons.Default.Upload,
+                contentDescription = null,
+                tint = if (isUpdate) PayrollColors.Warning else PayrollColors.Success,
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = {
+            Text(
+                text = if (isUpdate) "⚠️ Ενημέρωση Sheets" else "📤 Αποστολή σε Sheets",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = message,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+
+                if (isUpdate) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = PayrollColors.Warning.copy(alpha = 0.1f)
+                        ),
+                        border = BorderStroke(1.dp, PayrollColors.Warning.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = PayrollColors.Warning,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Τα παλιά δεδομένα θα διαγραφούν και θα αντικατασταθούν.",
+                                fontSize = 12.sp,
+                                color = PayrollColors.Warning
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isUpdate) PayrollColors.Warning else PayrollColors.Success
+                )
+            ) {
+                Icon(
+                    if (isUpdate) Icons.Default.Update else Icons.Default.Upload,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isUpdate) "Ενημέρωση" else "Αποστολή")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Ακύρωση")
+            }
+        }
+    )
+}
 @Composable
 private fun PayrollHeader() {
     Column(
@@ -379,7 +499,7 @@ fun EnhancedEmployeeDropdown(
             text = label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = PayrollColors.OnSurface,
+            color = PayrollColors.OnPrimary,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -408,7 +528,7 @@ fun EnhancedEmployeeDropdown(
                     Icon(
                         Icons.Default.Person,
                         contentDescription = null,
-                        tint = if (selectedEmployee != null) PayrollColors.Primary else PayrollColors.TextSecondary,
+                        tint = if (selectedEmployee != null) PayrollColors.PrimaryVariant else PayrollColors.TextSecondary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -462,7 +582,7 @@ fun EnhancedEmployeeDropdown(
                                             text = employee.name.ifBlank { "Εργαζόμενος ${employee.id}" },
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                             fontSize = 14.sp,
-                                            color = if (isSelected) PayrollColors.Primary else PayrollColors.OnSurface
+                                            color = if (isSelected) PayrollColors.Primary else PayrollColors.PrimaryVariant
                                         )
                                         if (employee.email.isNotBlank()) {
                                             Text(
@@ -488,7 +608,7 @@ fun EnhancedEmployeeDropdown(
                                 expanded = false
                             },
                             colors = MenuDefaults.itemColors(
-                                textColor = if (isSelected) PayrollColors.Primary else PayrollColors.OnSurface
+                                textColor = if (isSelected) PayrollColors.Primary else PayrollColors.PrimaryVariant
                             )
                         )
                     }

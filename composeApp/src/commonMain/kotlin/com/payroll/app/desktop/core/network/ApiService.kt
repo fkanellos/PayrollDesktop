@@ -19,6 +19,7 @@ data class PayrollCalculationResponse(
 
 /**
  * API Service for communicating with Spring Boot backend
+ * 🔴 UPDATED: Removed PayrollCalculationResponse wrapper
  */
 class PayrollApiService {
 
@@ -71,16 +72,19 @@ class PayrollApiService {
 
     /**
      * Calculate payroll
+     * 🔴 UPDATED: Backend now returns wrapper with ID
      */
     suspend fun calculatePayroll(request: PayrollRequest): RepositoryResult<PayrollResponse> {
         return try {
+            // Backend returns: { id: "...", payroll: {...} }
             val response: PayrollCalculationResponse = httpClient.post("$baseUrl/payroll/calculate") {
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }.body()
 
-            // Return payroll with id set
+            // Extract payroll with ID already set
             val payrollWithId = response.payroll.copy(id = response.id)
+
             RepositoryResult.Success(payrollWithId)
         } catch (e: Exception) {
             RepositoryResult.Error(e)
@@ -124,6 +128,30 @@ class PayrollApiService {
     suspend fun downloadPdf(payrollId: String): RepositoryResult<ByteArray> {
         return try {
             val response: ByteArray = httpClient.get("$baseUrl/api/export/payroll/$payrollId/pdf").body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * 🆕 Check if payroll exists in Google Sheets
+     */
+    suspend fun checkPayrollInSheets(payrollId: String): RepositoryResult<CheckSheetsResponse> {
+        return try {
+            val response: CheckSheetsResponse = httpClient.get("$baseUrl/payroll/$payrollId/check-sheets").body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * 🆕 Sync payroll to Google Sheets
+     */
+    suspend fun syncPayrollToSheets(payrollId: String): RepositoryResult<SyncSheetsResponse> {
+        return try {
+            val response: SyncSheetsResponse = httpClient.post("$baseUrl/payroll/$payrollId/sync-to-sheets").body()
             RepositoryResult.Success(response)
         } catch (e: Exception) {
             RepositoryResult.Error(e)

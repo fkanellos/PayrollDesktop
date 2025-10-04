@@ -389,27 +389,121 @@ class PayrollViewModel(
         }
     }
 
+    // 🔴 REPLACE the exportToExcel function in PayrollViewModel.kt
+
     private fun exportToExcel(result: PayrollResponse) {
         scope.launch {
             try {
-                emitSideEffect(PayrollEffect.ShowToast("🔄 Δημιουργία Excel..."))
+                // Check if we have payroll ID
+                val payrollId = result.id
+                if (payrollId == null) {
+                    emitSideEffect(PayrollEffect.ShowError("Δεν βρέθηκε ID payroll"))
+                    return@launch
+                }
 
-                val exportService = ExportService()
-                when (val exportResult = exportService.exportToExcel(result)) {
-                    is com.payroll.app.desktop.core.export.ExportResult.Success -> {
+                emitSideEffect(PayrollEffect.ShowToast("🔍 Έλεγχος Google Sheets..."))
+
+                // 1. Check if exists in Sheets
+                when (val checkResult = payrollRepository.checkPayrollInSheets(payrollId)) {
+                    is RepositoryResult.Success -> {
+                        val response = checkResult.data
+
+                        println("📊 Sheets check result:")
+                        println("   Exists: ${response.exists}")
+                        println("   Action: ${response.action}")
+                        println("   Message: ${response.message}")
+
+                        // 2. Emit effect to show confirmation dialog
+                        val confirmMessage = if (response.exists) {
+                            "⚠️ Υπάρχει ήδη payroll για:\n" +
+                                    "Εργαζόμενος: ${response.employeeName}\n" +
+                                    "Περίοδος: ${response.period}\n\n" +
+                                    "Θα ενημερωθούν τα υπάρχοντα δεδομένα. Συνέχεια;"
+                        } else {
+                            "✅ Νέο payroll για:\n" +
+                                    "Εργαζόμενος: ${response.employeeName}\n" +
+                                    "Περίοδος: ${response.period}\n\n" +
+                                    "Θα προστεθεί στο Google Sheets. Συνέχεια;"
+                        }
+
+                        // Emit confirmation request
                         emitSideEffect(
-                            PayrollEffect.ShowToast(
-                                "✅ ${exportResult.fileType} δημιουργήθηκε!\nΣώθηκε: ${exportResult.filePath}"
+                            PayrollEffect.RequestSheetsConfirmation(
+                                payrollId = payrollId,
+                                message = confirmMessage,
+                                isUpdate = response.exists
                             )
                         )
                     }
-                    is com.payroll.app.desktop.core.export.ExportResult.Error -> {
-                        emitSideEffect(PayrollEffect.ShowError(exportResult.message))
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError(
+                                "Σφάλμα ελέγχου Sheets: ${checkResult.exception.message}"
+                            )
+                        )
                     }
                 }
 
             } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής Excel: ${e.message}"))
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * 🆕 NEW: Confirm and execute Sheets sync
+     */
+    fun confirmAndSyncToSheets(payrollId: String) {
+        scope.launch {
+            try {
+                emitSideEffect(PayrollEffect.ShowToast("📤 Αποστολή στο Google Sheets..."))
+
+                when (val syncResult = payrollRepository.syncPayrollToSheets(payrollId)) {
+                    is RepositoryResult.Success -> {
+                        val response = syncResult.data
+
+                        if (response.status == "success") {
+                            val actionText = if (response.mode == "updated") "ενημερώθηκε" else "προστέθηκε"
+                            val masterWritten = response.masterWritten ?: false
+                            val detailsWritten = response.detailsWritten ?: false
+                            val detailRows = response.detailRows ?: 0
+
+                            if (masterWritten && detailsWritten) {
+                                emitSideEffect(
+                                    PayrollEffect.ShowToast(
+                                        "✅ Το payroll $actionText στο Google Sheets!\n" +
+                                                "📊 ${detailRows} client details"
+                                    )
+                                )
+                            } else {
+                                emitSideEffect(
+                                    PayrollEffect.ShowError(
+                                        "Μερική αποτυχία sync:\n" +
+                                                "Master: ${if (masterWritten) "✅" else "❌"}\n" +
+                                                "Details: ${if (detailsWritten) "✅" else "❌"}"
+                                    )
+                                )
+                            }
+                        } else {
+                            // Error από backend
+                            emitSideEffect(
+                                PayrollEffect.ShowError(
+                                    "Σφάλμα sync: ${response.message ?: "Unknown error"}"
+                                )
+                            )
+                        }
+                    }
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError(
+                                "Σφάλμα sync: ${syncResult.exception.message}"
+                            )
+                        )
+                    }
+                }
+
+            } catch (e: Exception) {
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα sync: ${e.message}"))
             }
         }
     }

@@ -66,6 +66,13 @@ class PayrollRepository(
     suspend fun downloadPdf(payrollId: String): RepositoryResult<ByteArray> {
         return apiService.downloadPdf(payrollId)
     }
+    suspend fun checkPayrollInSheets(payrollId: String): RepositoryResult<CheckSheetsResponse> {
+        return apiService.checkPayrollInSheets(payrollId)
+    }
+
+    suspend fun syncPayrollToSheets(payrollId: String): RepositoryResult<SyncSheetsResponse> {
+        return apiService.syncPayrollToSheets(payrollId)
+    }
 }
 
 /**

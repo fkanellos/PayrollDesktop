@@ -80,16 +80,41 @@ object PayrollTypography {
 private val LightColorScheme = lightColorScheme(
     primary = PayrollColors.Primary,
     onPrimary = PayrollColors.OnPrimary,
+    primaryContainer = PayrollColors.Primary.copy(alpha = 0.1f),
+    onPrimaryContainer = PayrollColors.Primary,
+
     secondary = PayrollColors.Secondary,
     onSecondary = PayrollColors.OnSecondary,
+    secondaryContainer = PayrollColors.Secondary.copy(alpha = 0.1f),
+    onSecondaryContainer = PayrollColors.Secondary,
+
     background = PayrollColors.Background,
     onBackground = PayrollColors.OnBackground,
-    surface = Color.White,
-    onSurface = Color.Black,
-    surfaceContainer = Color.White,
+
+    // 🔧 FIX: Όλα τα surface colors σε λευκό!
+    surface = Color.White,  // ✅ Main surface
+    onSurface = Color(0xFF2D3748),  // Text on surface
+    surfaceVariant = Color(0xFFF5F5F5),  // Alternative surface
+    onSurfaceVariant = Color(0xFF424242),  // Text on variant
+    surfaceContainer = Color.White,  // ✅ Dropdown menus!
+    surfaceContainerLow = Color.White,
+    surfaceContainerHigh = Color(0xFFF8F9FA),
+    surfaceContainerHighest = Color(0xFFF5F5F5),
+
+    // Outline
+    outline = PayrollColors.DividerColor,
+    outlineVariant = PayrollColors.DividerColor.copy(alpha = 0.5f),
+
+    // Error
     error = PayrollColors.Error,
     onError = PayrollColors.OnError,
+    errorContainer = PayrollColors.Error.copy(alpha = 0.1f),
+    onErrorContainer = PayrollColors.Error,
+
+    // Surface tint
+    surfaceTint = Color.Transparent  // No tint!
 )
+
 
 private val DarkColorScheme = darkColorScheme(
     primary = PayrollColors.Primary,
@@ -109,10 +134,7 @@ fun PayrollTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

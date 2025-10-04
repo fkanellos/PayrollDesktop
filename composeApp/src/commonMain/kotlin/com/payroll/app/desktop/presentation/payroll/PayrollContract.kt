@@ -81,6 +81,15 @@ sealed class PayrollEffect : UiEffect {
     data class SavePdfFile(val filename: String, val data: ByteArray) : PayrollEffect()
     data class SaveExcelFile(val filename: String, val data: ByteArray) : PayrollEffect()
 
+    /**
+     * 🆕 Request confirmation για Google Sheets sync
+     */
+    data class RequestSheetsConfirmation(
+        val payrollId: String,
+        val message: String,
+        val isUpdate: Boolean
+    ) : PayrollEffect()
+
     // System operations
     data class OpenUrl(val url: String) : PayrollEffect()
     object RequestCalendarPermission : PayrollEffect()
