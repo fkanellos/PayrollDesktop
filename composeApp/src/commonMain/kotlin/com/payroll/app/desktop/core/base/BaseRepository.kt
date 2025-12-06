@@ -53,7 +53,7 @@ sealed class RepositoryResult<out T> {
     /**
      * Get the value or a default value
      */
-    fun getOrDefault(default: T): T = when (this) {
+    fun getOrDefault(default: @UnsafeVariance T): T = when (this) {
         is Success -> data
         is Error -> default
     }

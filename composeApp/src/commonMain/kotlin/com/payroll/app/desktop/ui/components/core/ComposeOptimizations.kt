@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
  * Use for callbacks passed to child composables
  */
 @Composable
-inline fun <T> rememberCallback(
-    crossinline callback: (T) -> Unit
+fun <T> rememberCallback(
+    callback: (T) -> Unit
 ): (T) -> Unit {
     val currentCallback by rememberUpdatedState(callback)
     return remember { { value: T -> currentCallback(value) } }
@@ -25,8 +25,8 @@ inline fun <T> rememberCallback(
  * Remember a no-arg callback that won't cause recomposition
  */
 @Composable
-inline fun rememberCallback(
-    crossinline callback: () -> Unit
+fun rememberCallback(
+    callback: () -> Unit
 ): () -> Unit {
     val currentCallback by rememberUpdatedState(callback)
     return remember { { currentCallback() } }
