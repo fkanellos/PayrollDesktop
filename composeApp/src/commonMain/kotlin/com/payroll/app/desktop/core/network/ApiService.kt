@@ -18,6 +18,16 @@ data class PayrollCalculationResponse(
 )
 
 /**
+ * Wrapper for employee clients response
+ * Backend returns: { "employeeId": "...", "clients": [...] }
+ */
+@Serializable
+data class EmployeeClientsResponse(
+    val employeeId: String,
+    val clients: List<Client>
+)
+
+/**
  * API Service for communicating with Spring Boot backend
  * 🔴 UPDATED: Removed PayrollCalculationResponse wrapper
  */
@@ -60,12 +70,12 @@ class PayrollApiService {
 
     /**
      * Get clients for an employee
-     * 🔧 FIXED: Correct endpoint URL
+     * 🔧 FIXED: Backend returns wrapper { employeeId, clients }
      */
     suspend fun getEmployeeClients(employeeId: String): RepositoryResult<List<Client>> {
         return try {
-            val response: List<Client> = httpClient.get("$baseUrl/api/clients/employee/$employeeId").body()
-            RepositoryResult.Success(response)
+            val response: EmployeeClientsResponse = httpClient.get("$baseUrl/api/clients/employee/$employeeId").body()
+            RepositoryResult.Success(response.clients)
         } catch (e: Exception) {
             RepositoryResult.Error(e)
         }
