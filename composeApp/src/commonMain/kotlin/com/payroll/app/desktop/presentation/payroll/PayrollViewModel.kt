@@ -158,9 +158,96 @@ class PayrollViewModel(
                 currentState
             }
 
+            // Sync Database Actions
+            PayrollAction.SyncDatabase -> {
+                syncDatabase()
+                currentState.copy(isSyncing = true, syncResult = null, error = null)
+            }
+
+            PayrollAction.ClearSyncResult -> {
+                currentState.copy(syncResult = null)
+            }
+
             // Error Handling
             PayrollAction.ClearError -> {
                 currentState.copy(error = null)
+            }
+        }
+    }
+
+    /**
+     * Sync database from Google Sheets
+     */
+    private fun syncDatabase() {
+        scope.launch {
+            try {
+                emitSideEffect(PayrollEffect.ShowToast("🔄 Συγχρονισμός βάσης δεδομένων..."))
+
+                when (val result = payrollRepository.syncDatabase()) {
+                    is RepositoryResult.Success -> {
+                        val response = result.data
+                        val syncResult = SyncDatabaseResult(
+                            success = true,
+                            employeesInserted = response.employeesInserted,
+                            employeesUpdated = response.employeesUpdated,
+                            clientsInserted = response.clientsInserted,
+                            clientsUpdated = response.clientsUpdated,
+                            durationMs = response.durationMs
+                        )
+
+                        updateState { currentState ->
+                            currentState.copy(
+                                isSyncing = false,
+                                syncResult = syncResult
+                            )
+                        }
+
+                        // Reload employees after sync
+                        loadEmployees()
+
+                        emitSideEffect(
+                            PayrollEffect.ShowToast(
+                                "✅ Συγχρονισμός ολοκληρώθηκε!\n" +
+                                        "Εργαζόμενοι: +${response.employeesInserted} / ↻${response.employeesUpdated}\n" +
+                                        "Πελάτες: +${response.clientsInserted} / ↻${response.clientsUpdated}"
+                            )
+                        )
+                        emitSideEffect(PayrollEffect.SyncDatabaseComplete(syncResult))
+                    }
+                    is RepositoryResult.Error -> {
+                        val syncResult = SyncDatabaseResult(
+                            success = false,
+                            errorMessage = result.exception.message
+                        )
+
+                        updateState { currentState ->
+                            currentState.copy(
+                                isSyncing = false,
+                                syncResult = syncResult,
+                                error = "Σφάλμα συγχρονισμού: ${result.exception.message}"
+                            )
+                        }
+
+                        emitSideEffect(
+                            PayrollEffect.ShowError("Σφάλμα συγχρονισμού: ${result.exception.message}")
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                val syncResult = SyncDatabaseResult(
+                    success = false,
+                    errorMessage = e.message
+                )
+
+                updateState { currentState ->
+                    currentState.copy(
+                        isSyncing = false,
+                        syncResult = syncResult,
+                        error = e.message ?: "Σφάλμα συγχρονισμού"
+                    )
+                }
+
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα συγχρονισμού: ${e.message}"))
             }
         }
     }
@@ -565,8 +652,7 @@ class PayrollViewModel(
                 .toString()
         )
 
-    override fun onCleared() {
+    fun onCleared() {
         scope.cancel()
-        super.onCleared()
     }
 }

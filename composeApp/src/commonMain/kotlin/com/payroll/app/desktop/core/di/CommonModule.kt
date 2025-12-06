@@ -5,6 +5,7 @@ import com.payroll.app.desktop.data.repositories.ClientRepository
 import com.payroll.app.desktop.data.repositories.EmployeeRepository
 import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.presentation.client.ClientManagementViewModel
+import com.payroll.app.desktop.presentation.employee.EmployeeManagementViewModel
 import com.payroll.app.desktop.presentation.payroll.PayrollViewModel
 import org.koin.dsl.module
 
@@ -24,4 +25,5 @@ val commonModule = module {
     // ViewModels
     factory<PayrollViewModel> { PayrollViewModel(get()) }
     factory<ClientManagementViewModel> { ClientManagementViewModel(get(), get()) }
+    factory<EmployeeManagementViewModel> { EmployeeManagementViewModel(get()) }
 }

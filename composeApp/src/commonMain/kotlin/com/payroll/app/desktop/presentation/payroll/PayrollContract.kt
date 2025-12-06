@@ -22,8 +22,24 @@ data class PayrollState(
     val datePickerType: DatePickerType = DatePickerType.START,
     // Enhanced fields
     val showStartDatePicker: Boolean = false,
-    val showEndDatePicker: Boolean = false
+    val showEndDatePicker: Boolean = false,
+    // Sync Database fields
+    val isSyncing: Boolean = false,
+    val syncResult: SyncDatabaseResult? = null
 ) : UiState
+
+/**
+ * Sync database result
+ */
+data class SyncDatabaseResult(
+    val success: Boolean,
+    val employeesInserted: Int = 0,
+    val employeesUpdated: Int = 0,
+    val clientsInserted: Int = 0,
+    val clientsUpdated: Int = 0,
+    val durationMs: Long = 0,
+    val errorMessage: String? = null
+)
 
 enum class DatePickerType {
     START, END
@@ -61,6 +77,10 @@ sealed class PayrollAction : UiAction {
     object ExportToPdf : PayrollAction()
     object ExportToExcel : PayrollAction()
 
+    // Sync Database actions
+    object SyncDatabase : PayrollAction()
+    object ClearSyncResult : PayrollAction()
+
     // Error handling
     object ClearError : PayrollAction()
 }
@@ -93,6 +113,9 @@ sealed class PayrollEffect : UiEffect {
     // System operations
     data class OpenUrl(val url: String) : PayrollEffect()
     object RequestCalendarPermission : PayrollEffect()
+
+    // Sync Database effects
+    data class SyncDatabaseComplete(val result: SyncDatabaseResult) : PayrollEffect()
 }
 
 /**

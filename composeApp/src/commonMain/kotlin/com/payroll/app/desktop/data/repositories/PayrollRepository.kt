@@ -1,56 +1,46 @@
 package com.payroll.app.desktop.data.repositories
 
-import com.payroll.app.desktop.core.base.BaseRepository
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.network.PayrollApiService
 import com.payroll.app.desktop.domain.models.*
 
 /**
  * Repository for payroll operations
- * Implements BaseRepository and provides additional payroll-specific methods
  */
 class PayrollRepository(
     private val apiService: PayrollApiService
-) : BaseRepository<PayrollResponse, String> {
-
-    // Base repository methods (not used much for payroll)
-    override suspend fun getAll(): Result<List<PayrollResponse>> {
-        return Result.failure(Exception("Not implemented for PayrollResponse"))
-    }
-
-    override suspend fun getById(id: String): Result<PayrollResponse?> {
-        return Result.failure(Exception("Not implemented for PayrollResponse"))
-    }
-
-    override suspend fun create(item: PayrollResponse): Result<PayrollResponse> {
-        return Result.failure(Exception("Not implemented for PayrollResponse"))
-    }
-
-    override suspend fun update(id: String, item: PayrollResponse): Result<PayrollResponse> {
-        return Result.failure(Exception("Not implemented for PayrollResponse"))
-    }
-
-    override suspend fun delete(id: String): Result<Boolean> {
-        return Result.failure(Exception("Not implemented for PayrollResponse"))
-    }
-
-    // Payroll-specific methods
+) {
+    /**
+     * Get all employees
+     */
     suspend fun getAllEmployees(): RepositoryResult<List<Employee>> {
         return apiService.getEmployees()
     }
 
+    /**
+     * Get a single employee by ID
+     */
     suspend fun getEmployee(id: String): RepositoryResult<Employee> {
         return apiService.getEmployee(id)
     }
 
+    /**
+     * Get all clients for a specific employee
+     */
     suspend fun getEmployeeClients(employeeId: String): RepositoryResult<List<Client>> {
         return apiService.getEmployeeClients(employeeId)
     }
 
+    /**
+     * Calculate payroll for a given request
+     */
     suspend fun calculatePayroll(request: PayrollRequest): RepositoryResult<PayrollResponse> {
         return apiService.calculatePayroll(request)
     }
 
+    /**
+     * Get calendar events for an employee within a date range
+     */
     suspend fun getCalendarEvents(
         employeeId: String,
         startDate: String,
@@ -59,19 +49,46 @@ class PayrollRepository(
         return apiService.getCalendarEvents(employeeId, startDate, endDate)
     }
 
+    /**
+     * Test backend connection
+     */
     suspend fun testBackendConnection(): RepositoryResult<String> {
         return apiService.testConnection()
     }
 
+    /**
+     * Download PDF for a payroll calculation
+     */
     suspend fun downloadPdf(payrollId: String): RepositoryResult<ByteArray> {
         return apiService.downloadPdf(payrollId)
     }
+
+    /**
+     * Check if payroll exists in Google Sheets
+     */
     suspend fun checkPayrollInSheets(payrollId: String): RepositoryResult<CheckSheetsResponse> {
         return apiService.checkPayrollInSheets(payrollId)
     }
 
+    /**
+     * Sync payroll to Google Sheets
+     */
     suspend fun syncPayrollToSheets(payrollId: String): RepositoryResult<SyncSheetsResponse> {
         return apiService.syncPayrollToSheets(payrollId)
+    }
+
+    /**
+     * Sync database from Google Sheets
+     */
+    suspend fun syncDatabase(): RepositoryResult<SyncDatabaseResponse> {
+        return apiService.syncDatabase()
+    }
+
+    /**
+     * Get database statistics
+     */
+    suspend fun getDatabaseStats(): RepositoryResult<DatabaseStatsResponse> {
+        return apiService.getDatabaseStats()
     }
 }
 
@@ -80,37 +97,45 @@ class PayrollRepository(
  */
 class EmployeeRepository(
     private val apiService: PayrollApiService
-) : BaseRepository<Employee, String> {
-
-    override suspend fun getAll(): Result<List<Employee>> {
-        return when (val result = apiService.getEmployees()) {
-            is RepositoryResult.Success -> Result.success(result.data)
-            is RepositoryResult.Error -> Result.failure(result.exception)
-        }
+) {
+    /**
+     * Get all employees
+     */
+    suspend fun getAll(): RepositoryResult<List<Employee>> {
+        return apiService.getEmployees()
     }
 
-    override suspend fun getById(id: String): Result<Employee?> {
-        return when (val result = apiService.getEmployee(id)) {
-            is RepositoryResult.Success -> Result.success(result.data)
-            is RepositoryResult.Error -> Result.failure(result.exception)
-        }
+    /**
+     * Get a single employee by ID
+     */
+    suspend fun getById(id: String): RepositoryResult<Employee> {
+        return apiService.getEmployee(id)
     }
 
-    override suspend fun create(item: Employee): Result<Employee> {
-        // TODO: Implement create employee API call
-        return Result.failure(Exception("Create employee not implemented yet"))
+    /**
+     * Create a new employee
+     */
+    suspend fun createEmployee(employee: Employee): RepositoryResult<Employee> {
+        return apiService.createEmployee(employee)
     }
 
-    override suspend fun update(id: String, item: Employee): Result<Employee> {
-        // TODO: Implement update employee API call
-        return Result.failure(Exception("Update employee not implemented yet"))
+    /**
+     * Update an existing employee
+     */
+    suspend fun updateEmployee(employee: Employee): RepositoryResult<Employee> {
+        return apiService.updateEmployee(employee.id, employee)
     }
 
-    override suspend fun delete(id: String): Result<Boolean> {
-        // TODO: Implement delete employee API call
-        return Result.failure(Exception("Delete employee not implemented yet"))
+    /**
+     * Delete an employee by ID
+     */
+    suspend fun deleteEmployee(id: String): RepositoryResult<Boolean> {
+        return apiService.deleteEmployee(id)
     }
 
+    /**
+     * Get all clients for a specific employee
+     */
     suspend fun getEmployeeClients(employeeId: String): RepositoryResult<List<Client>> {
         return apiService.getEmployeeClients(employeeId)
     }

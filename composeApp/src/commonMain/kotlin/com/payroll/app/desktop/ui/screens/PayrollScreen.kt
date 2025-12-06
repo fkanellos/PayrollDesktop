@@ -103,8 +103,11 @@ fun PayrollScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Header
-        PayrollHeader()
+        // Header with Sync button
+        PayrollHeader(
+            isSyncing = uiState.isSyncing,
+            onSyncClick = { viewModel.handleAction(PayrollAction.SyncDatabase) }
+        )
 
         // Main calculation form
         PayrollCalculationForm(
@@ -267,21 +270,60 @@ fun SheetsConfirmationDialog(
     )
 }
 @Composable
-private fun PayrollHeader() {
+private fun PayrollHeader(
+    isSyncing: Boolean = false,
+    onSyncClick: () -> Unit = {}
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Σύστημα Μισθοδοσίας",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = PayrollColors.Primary
-        )
-        Text(
-            text = "Αυτοματοποιημένος υπολογισμός μισθών από Google Calendar",
-            fontSize = 16.sp,
-            color = PayrollColors.TextSecondary
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Σύστημα Μισθοδοσίας",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PayrollColors.Primary
+                )
+                Text(
+                    text = "Αυτοματοποιημένος υπολογισμός μισθών από Google Calendar",
+                    fontSize = 16.sp,
+                    color = PayrollColors.TextSecondary
+                )
+            }
+
+            // Sync Database Button
+            OutlinedButton(
+                onClick = onSyncClick,
+                enabled = !isSyncing,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = PayrollColors.Primary
+                ),
+                border = BorderStroke(1.dp, PayrollColors.Primary)
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = PayrollColors.Primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Συγχρονισμός...")
+                } else {
+                    Icon(
+                        Icons.Default.Sync,
+                        contentDescription = "Sync",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Συγχρονισμός Βάσης")
+                }
+            }
+        }
         HorizontalDivider(color = PayrollColors.DividerColor)
     }
 }
