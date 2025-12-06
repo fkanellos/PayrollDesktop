@@ -5,14 +5,17 @@ import kotlinx.serialization.Serializable
 
 /**
  * Employee domain model
+ * Updated to match backend API
  */
 @Serializable
 data class Employee(
     val id: String,
     val name: String,
-    val email: String,
+    val email: String = "",
     @SerialName("calendarId") val calendarId: String,
-    val color: String = "#2196F3"
+    val color: String = "#2196F3",
+    @SerialName("sheetName") val sheetName: String = "",
+    @SerialName("supervisionPrice") val supervisionPrice: Double = 0.0
 )
 
 /**

@@ -60,11 +60,66 @@ class PayrollApiService {
 
     /**
      * Get clients for an employee
+     * 🔧 FIXED: Correct endpoint URL
      */
     suspend fun getEmployeeClients(employeeId: String): RepositoryResult<List<Client>> {
         return try {
-            val response: List<Client> = httpClient.get("$baseUrl/api/employees/$employeeId/clients").body()
+            val response: List<Client> = httpClient.get("$baseUrl/api/clients/employee/$employeeId").body()
             RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Get all clients
+     */
+    suspend fun getAllClients(): RepositoryResult<List<Client>> {
+        return try {
+            val response: List<Client> = httpClient.get("$baseUrl/api/clients").body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Create a new client
+     */
+    suspend fun createClient(client: Client): RepositoryResult<Client> {
+        return try {
+            val response: Client = httpClient.post("$baseUrl/api/clients") {
+                contentType(ContentType.Application.Json)
+                setBody(client)
+            }.body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Update an existing client
+     */
+    suspend fun updateClient(id: Long, client: Client): RepositoryResult<Client> {
+        return try {
+            val response: Client = httpClient.put("$baseUrl/api/clients/$id") {
+                contentType(ContentType.Application.Json)
+                setBody(client)
+            }.body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Delete a client
+     */
+    suspend fun deleteClient(id: Long): RepositoryResult<Boolean> {
+        return try {
+            httpClient.delete("$baseUrl/api/clients/$id")
+            RepositoryResult.Success(true)
         } catch (e: Exception) {
             RepositoryResult.Error(e)
         }
@@ -152,6 +207,76 @@ class PayrollApiService {
     suspend fun syncPayrollToSheets(payrollId: String): RepositoryResult<SyncSheetsResponse> {
         return try {
             val response: SyncSheetsResponse = httpClient.post("$baseUrl/payroll/$payrollId/sync-to-sheets").body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    // ==================== EMPLOYEE CRUD ====================
+
+    /**
+     * Create a new employee
+     */
+    suspend fun createEmployee(employee: Employee): RepositoryResult<Employee> {
+        return try {
+            val response: Employee = httpClient.post("$baseUrl/api/employees") {
+                contentType(ContentType.Application.Json)
+                setBody(employee)
+            }.body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Update an existing employee
+     */
+    suspend fun updateEmployee(id: String, employee: Employee): RepositoryResult<Employee> {
+        return try {
+            val response: Employee = httpClient.put("$baseUrl/api/employees/$id") {
+                contentType(ContentType.Application.Json)
+                setBody(employee)
+            }.body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Delete an employee
+     */
+    suspend fun deleteEmployee(id: String): RepositoryResult<Boolean> {
+        return try {
+            httpClient.delete("$baseUrl/api/employees/$id")
+            RepositoryResult.Success(true)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    // ==================== DATABASE SYNC ====================
+
+    /**
+     * Sync database from Excel file in Google Drive
+     */
+    suspend fun syncDatabase(): RepositoryResult<SyncDatabaseResponse> {
+        return try {
+            val response: SyncDatabaseResponse = httpClient.post("$baseUrl/api/db/sync").body()
+            RepositoryResult.Success(response)
+        } catch (e: Exception) {
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
+     * Get database sync statistics
+     */
+    suspend fun getDatabaseStats(): RepositoryResult<DatabaseStatsResponse> {
+        return try {
+            val response: DatabaseStatsResponse = httpClient.get("$baseUrl/api/db/stats").body()
             RepositoryResult.Success(response)
         } catch (e: Exception) {
             RepositoryResult.Error(e)

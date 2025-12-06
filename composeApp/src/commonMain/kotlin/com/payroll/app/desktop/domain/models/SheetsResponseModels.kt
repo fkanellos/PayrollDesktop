@@ -37,3 +37,32 @@ data class SyncSheetsResponse(
     val errorType: String? = null,
     val errorDetails: String? = null
 )
+
+/**
+ * Response από /api/db/sync
+ */
+@Serializable
+data class SyncDatabaseResponse(
+    val employeesInserted: Int = 0,
+    val employeesUpdated: Int = 0,
+    val clientsInserted: Int = 0,
+    val clientsUpdated: Int = 0,
+    val durationMs: Long = 0
+)
+
+/**
+ * Response από /api/db/stats
+ */
+@Serializable
+data class DatabaseStatsResponse(
+    val database: DatabaseCounts,
+    val excel: DatabaseCounts,
+    val inSync: Boolean,
+    val lastLoadTime: String? = null
+)
+
+@Serializable
+data class DatabaseCounts(
+    val employees: Int,
+    val clients: Int
+)

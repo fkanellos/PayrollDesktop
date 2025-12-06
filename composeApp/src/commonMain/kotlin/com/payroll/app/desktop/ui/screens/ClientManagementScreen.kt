@@ -2,7 +2,6 @@ package com.payroll.app.desktop.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,35 +18,50 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.payroll.app.desktop.domain.models.ClientSimple
-import com.payroll.app.desktop.domain.models.DummyData
-import com.payroll.app.desktop.domain.models.EmployeeSimple
+import com.payroll.app.desktop.core.network.PayrollApiService
+import com.payroll.app.desktop.data.repositories.ClientRepository
+import com.payroll.app.desktop.data.repositories.PayrollRepository
+import com.payroll.app.desktop.domain.models.Client
+import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.domain.usecases.ClientUseCases
-import com.payroll.app.desktop.domain.usecases.ClientValidationException
+import com.payroll.app.desktop.domain.validation.ClientValidator
 import com.payroll.app.desktop.domain.validation.ValidationError
+import com.payroll.app.desktop.domain.validation.ValidationResult
+import com.payroll.app.desktop.presentation.client.ClientManagementAction
+import com.payroll.app.desktop.presentation.client.ClientManagementEffect
+import com.payroll.app.desktop.presentation.client.ClientManagementViewModel
 import com.payroll.app.desktop.ui.theme.PayrollColors
 import com.payroll.app.desktop.ui.theme.PayrollTheme
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
+import com.payroll.app.desktop.utils.toEuroString
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import kotlin.collections.find
-import kotlin.time.Clock.System
 
+/**
+ * Client Management Screen - Connected to Backend API
+ */
 @Composable
 fun ClientManagementScreen() {
-    var selectedEmployeeId by remember { mutableStateOf(DummyData.employees.firstOrNull()?.id) }
-    var searchQuery by remember { mutableStateOf("") }
+    // Create dependencies
+    val apiService = remember { PayrollApiService() }
+    val payrollRepository = remember { PayrollRepository(apiService) }
+    val clientRepository = remember { ClientRepository(apiService) }
+    val viewModel = remember { ClientManagementViewModel(payrollRepository, clientRepository) }
 
-    // Mutable list για local state management
-    var clientsList by remember { mutableStateOf(DummyData.clients) }
+    val uiState by viewModel.uiState.collectAsState()
 
-    val filteredEmployees = DummyData.employees.filter {
-        it.name.contains(searchQuery, ignoreCase = true)
+    // Handle side effects
+    LaunchedEffect(Unit) {
+        viewModel.sideEffect.collect { effect ->
+            when (effect) {
+                is ClientManagementEffect.ShowToast -> {
+                    println("Toast: ${effect.message}")
+                }
+                is ClientManagementEffect.ShowError -> {
+                    println("Error: ${effect.error}")
+                }
+                else -> { /* Handle other effects */ }
+            }
+        }
     }
-
-    val selectedEmployee = DummyData.employees.find { it.id == selectedEmployeeId }
-    val employeeClients = clientsList.filter { it.employeeId == selectedEmployeeId }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -56,15 +70,18 @@ fun ClientManagementScreen() {
         Row(modifier = Modifier.fillMaxSize()) {
             // LEFT PANEL - Employees
             EmployeeListPanel(
-                employees = filteredEmployees,
-                selectedEmployeeId = selectedEmployeeId,
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                onEmployeeSelected = { selectedEmployeeId = it }
+                employees = uiState.filteredEmployees,
+                selectedEmployeeId = uiState.selectedEmployee?.id,
+                searchQuery = uiState.searchQuery,
+                isLoading = uiState.isLoading,
+                onSearchQueryChange = { viewModel.handleAction(ClientManagementAction.SetSearchQuery(it)) },
+                onEmployeeSelected = { employee ->
+                    viewModel.handleAction(ClientManagementAction.SelectEmployee(employee))
+                }
             )
 
             // DIVIDER
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(1.dp),
@@ -73,19 +90,24 @@ fun ClientManagementScreen() {
 
             // RIGHT PANEL - Clients
             ClientTablePanel(
-                employee = selectedEmployee,
-                clients = employeeClients,
-                onAddClient = { newClient ->
-                    clientsList = clientsList + newClient
-                },
-                onEditClient = { updatedClient ->
-                    clientsList = clientsList.map {
-                        if (it.id == updatedClient.id) updatedClient else it
-                    }
-                },
-                onDeleteClient = { clientId ->
-                    clientsList = clientsList.filter { it.id != clientId }
-                }
+                employee = uiState.selectedEmployee,
+                clients = uiState.clients,
+                isLoading = uiState.isLoadingClients,
+                isSaving = uiState.isSaving,
+                error = uiState.error,
+                showAddDialog = uiState.showAddDialog,
+                editingClient = uiState.editingClient,
+                deleteConfirmClient = uiState.deleteConfirmClient,
+                onShowAddDialog = { viewModel.handleAction(ClientManagementAction.ShowAddDialog) },
+                onHideAddDialog = { viewModel.handleAction(ClientManagementAction.HideAddDialog) },
+                onShowEditDialog = { viewModel.handleAction(ClientManagementAction.ShowEditDialog(it)) },
+                onHideEditDialog = { viewModel.handleAction(ClientManagementAction.HideEditDialog) },
+                onShowDeleteConfirmation = { viewModel.handleAction(ClientManagementAction.ShowDeleteConfirmation(it)) },
+                onHideDeleteConfirmation = { viewModel.handleAction(ClientManagementAction.HideDeleteConfirmation) },
+                onCreateClient = { viewModel.handleAction(ClientManagementAction.CreateClient(it)) },
+                onUpdateClient = { viewModel.handleAction(ClientManagementAction.UpdateClient(it)) },
+                onDeleteClient = { viewModel.handleAction(ClientManagementAction.DeleteClient(it)) },
+                onClearError = { viewModel.handleAction(ClientManagementAction.ClearError) }
             )
         }
     }
@@ -93,11 +115,12 @@ fun ClientManagementScreen() {
 
 @Composable
 fun EmployeeListPanel(
-    employees: List<EmployeeSimple>,
+    employees: List<Employee>,
     selectedEmployeeId: String?,
     searchQuery: String,
+    isLoading: Boolean,
     onSearchQueryChange: (String) -> Unit,
-    onEmployeeSelected: (String) -> Unit
+    onEmployeeSelected: (Employee) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -108,7 +131,7 @@ fun EmployeeListPanel(
     ) {
         // Header
         Text(
-            text = "👥 Εργαζόμενοι",
+            text = "Εργαζόμενοι",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = PayrollColors.Primary,
@@ -122,13 +145,33 @@ fun EmployeeListPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            placeholder = { Text("🔍 Αναζήτηση...") },
+            placeholder = { Text("Αναζήτηση...") },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = PayrollColors.TextSecondary
+                )
+            },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = PayrollColors.Primary,
                 unfocusedBorderColor = PayrollColors.DividerColor
             )
         )
+
+        // Loading indicator
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = PayrollColors.Primary
+                )
+            }
+        }
 
         // Employee List
         LazyColumn(
@@ -138,7 +181,20 @@ fun EmployeeListPanel(
                 EmployeeCard(
                     employee = employee,
                     isSelected = employee.id == selectedEmployeeId,
-                    onClick = { onEmployeeSelected(employee.id) }
+                    onClick = { onEmployeeSelected(employee) }
+                )
+            }
+        }
+
+        // Empty state
+        if (!isLoading && employees.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Δεν βρέθηκαν εργαζόμενοι",
+                    color = PayrollColors.TextSecondary
                 )
             }
         }
@@ -147,7 +203,7 @@ fun EmployeeListPanel(
 
 @Composable
 fun EmployeeCard(
-    employee: EmployeeSimple,
+    employee: Employee,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -156,7 +212,10 @@ fun EmployeeCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) PayrollColors.CardBackground else PayrollColors.CardBackground
+            containerColor = if (isSelected)
+                PayrollColors.Primary.copy(alpha = 0.1f)
+            else
+                PayrollColors.CardBackground
         ),
         border = if (isSelected) BorderStroke(2.dp, PayrollColors.Primary) else null,
         shape = RoundedCornerShape(8.dp)
@@ -177,26 +236,23 @@ fun EmployeeCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = employee.email,
-                    fontSize = 12.sp,
-                    color = PayrollColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (employee.email.isNotBlank()) {
+                    Text(
+                        text = employee.email,
+                        fontSize = 12.sp,
+                        color = PayrollColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
-            // Client count badge
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (isSelected) PayrollColors.Primary else PayrollColors.Primary
-            ) {
-                Text(
-                    text = "${employee.clientCount}",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) Color.White else PayrollColors.Primary
+            if (isSelected) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = PayrollColors.Primary,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -205,16 +261,25 @@ fun EmployeeCard(
 
 @Composable
 fun ClientTablePanel(
-    employee: EmployeeSimple?,
-    clients: List<ClientSimple>,
-    onAddClient: (ClientSimple) -> Unit,
-    onEditClient: (ClientSimple) -> Unit,
-    onDeleteClient: (String) -> Unit
+    employee: Employee?,
+    clients: List<Client>,
+    isLoading: Boolean,
+    isSaving: Boolean,
+    error: String?,
+    showAddDialog: Boolean,
+    editingClient: Client?,
+    deleteConfirmClient: Client?,
+    onShowAddDialog: () -> Unit,
+    onHideAddDialog: () -> Unit,
+    onShowEditDialog: (Client) -> Unit,
+    onHideEditDialog: () -> Unit,
+    onShowDeleteConfirmation: (Client) -> Unit,
+    onHideDeleteConfirmation: () -> Unit,
+    onCreateClient: (Client) -> Unit,
+    onUpdateClient: (Client) -> Unit,
+    onDeleteClient: (Long) -> Unit,
+    onClearError: () -> Unit
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingClient by remember { mutableStateOf<ClientSimple?>(null) }
-    var deleteConfirmClient by remember { mutableStateOf<ClientSimple?>(null) }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -229,7 +294,7 @@ fun ClientTablePanel(
         ) {
             Column {
                 Text(
-                    text = "📋 Πελάτες",
+                    text = "Πελάτες",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = PayrollColors.Primary
@@ -245,7 +310,8 @@ fun ClientTablePanel(
             }
 
             Button(
-                onClick = { showAddDialog = true },
+                onClick = onShowAddDialog,
+                enabled = employee != null && !isSaving,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PayrollColors.Primary
                 )
@@ -256,16 +322,79 @@ fun ClientTablePanel(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Table
-        if (clients.isEmpty()) {
+        // Error display
+        error?.let { errorMsg ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = PayrollColors.Error.copy(alpha = 0.1f)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Error,
+                        contentDescription = null,
+                        tint = PayrollColors.Error
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = errorMsg,
+                        color = PayrollColors.Error,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onClearError) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Loading indicator
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = PayrollColors.Primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Φόρτωση πελατών...", color = PayrollColors.TextSecondary)
+                }
+            }
+        } else if (employee == null) {
+            // No employee selected
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = PayrollColors.TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Επιλέξτε εργαζόμενο",
+                        fontSize = 18.sp,
+                        color = PayrollColors.TextSecondary
+                    )
+                }
+            }
+        } else if (clients.isEmpty()) {
             EmptyClientsView()
         } else {
             ClientsTable(
                 clients = clients,
-                onEditClient = { editingClient = it },
-                onDeleteClient = { deleteConfirmClient = it }
+                onEditClient = onShowEditDialog,
+                onDeleteClient = onShowDeleteConfirmation
             )
         }
     }
@@ -275,12 +404,10 @@ fun ClientTablePanel(
         ClientFormDialog(
             client = null,
             employeeId = employee.id,
-            existingClients = clients, // 🆕 PASS THIS
-            onDismiss = { showAddDialog = false },
-            onSave = { newClient ->
-                onAddClient(newClient)
-                showAddDialog = false
-            }
+            existingClients = clients,
+            isSaving = isSaving,
+            onDismiss = onHideAddDialog,
+            onSave = onCreateClient
         )
     }
 
@@ -289,36 +416,51 @@ fun ClientTablePanel(
         ClientFormDialog(
             client = client,
             employeeId = employee?.id ?: "",
-            existingClients = clients, // 🆕 PASS THIS
-            onDismiss = { editingClient = null },
-            onSave = { updatedClient ->
-                onEditClient(updatedClient)
-                editingClient = null
-            }
+            existingClients = clients,
+            isSaving = isSaving,
+            onDismiss = onHideEditDialog,
+            onSave = onUpdateClient
         )
     }
 
     // Delete Confirmation
     deleteConfirmClient?.let { client ->
         AlertDialog(
-            onDismissRequest = { deleteConfirmClient = null },
+            onDismissRequest = onHideDeleteConfirmation,
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = PayrollColors.Error
+                )
+            },
             title = { Text("Διαγραφή Πελάτη") },
-            text = { Text("Είστε σίγουροι ότι θέλετε να διαγράψετε τον πελάτη '${client.name}';") },
+            text = {
+                Text("Είστε σίγουροι ότι θέλετε να διαγράψετε τον πελάτη '${client.name}';")
+            },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteClient(client.id)
-                        deleteConfirmClient = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = PayrollColors.Error
-                    )
+                Button(
+                    onClick = { onDeleteClient(client.id) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PayrollColors.Error
+                    ),
+                    enabled = !isSaving
                 ) {
-                    Text("Διαγραφή")
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text("Διαγραφή")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deleteConfirmClient = null }) {
+                TextButton(
+                    onClick = onHideDeleteConfirmation,
+                    enabled = !isSaving
+                ) {
                     Text("Ακύρωση")
                 }
             }
@@ -347,15 +489,20 @@ fun EmptyClientsView() {
                 fontSize = 18.sp,
                 color = PayrollColors.TextSecondary
             )
+            Text(
+                text = "Προσθέστε πελάτες με το κουμπί παραπάνω",
+                fontSize = 14.sp,
+                color = PayrollColors.TextSecondary
+            )
         }
     }
 }
 
 @Composable
 fun ClientsTable(
-    clients: List<ClientSimple>,
-    onEditClient: (ClientSimple) -> Unit,
-    onDeleteClient: (ClientSimple) -> Unit
+    clients: List<Client>,
+    onEditClient: (Client) -> Unit,
+    onDeleteClient: (Client) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -369,7 +516,7 @@ fun ClientsTable(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(PayrollColors.Primary)
+                    .background(PayrollColors.Primary.copy(alpha = 0.1f))
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -411,7 +558,7 @@ fun ClientsTable(
                 }
             }
 
-            Divider(color = PayrollColors.DividerColor)
+            HorizontalDivider(color = PayrollColors.DividerColor)
 
             // Table Rows
             LazyColumn {
@@ -421,7 +568,7 @@ fun ClientsTable(
                         onEdit = { onEditClient(client) },
                         onDelete = { onDeleteClient(client) }
                     )
-                    Divider(color = PayrollColors.DividerColor.copy(alpha = 0.5f))
+                    HorizontalDivider(color = PayrollColors.DividerColor.copy(alpha = 0.5f))
                 }
             }
         }
@@ -430,7 +577,7 @@ fun ClientsTable(
 
 @Composable
 fun ClientRow(
-    client: ClientSimple,
+    client: Client,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -448,20 +595,20 @@ fun ClientRow(
             color = PayrollColors.OnSurface
         )
         Text(
-            "${client.price}€",
+            client.price.toEuroString(),
             modifier = Modifier.weight(1f),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = PayrollColors.Success
         )
         Text(
-            "${client.employeePrice}€",
+            client.employeePrice.toEuroString(),
             modifier = Modifier.weight(1f),
             fontSize = 14.sp,
             color = PayrollColors.Info
         )
         Text(
-            "${client.companyPrice}€",
+            client.companyPrice.toEuroString(),
             modifier = Modifier.weight(1f),
             fontSize = 14.sp,
             color = PayrollColors.Primary
@@ -498,13 +645,13 @@ fun ClientRow(
 
 @Composable
 fun ClientFormDialog(
-    client: ClientSimple?,
+    client: Client?,
     employeeId: String,
-    existingClients: List<ClientSimple>,
+    existingClients: List<Client>,
+    isSaving: Boolean,
     onDismiss: () -> Unit,
-    onSave: (ClientSimple) -> Unit
+    onSave: (Client) -> Unit
 ) {
-    // 🔄 ΣΩΣΤΗ ΣΕΙΡΑ: Πρώτα η τιμή πελάτη!
     var price by remember { mutableStateOf(client?.price?.toString() ?: "") }
     var employeePrice by remember { mutableStateOf(client?.employeePrice?.toString() ?: "") }
     var companyPrice by remember { mutableStateOf(client?.companyPrice?.toString() ?: "") }
@@ -513,20 +660,20 @@ fun ClientFormDialog(
     var validationErrors by remember { mutableStateOf<List<ValidationError>>(emptyList()) }
     val clientUseCases = remember { ClientUseCases() }
 
-    // 🆕 Auto-calculate company price when total or employee changes
-    var autoCalculateCompany by remember { mutableStateOf(true) }
+    // Auto-calculate company price
+    var autoCalculateCompany by remember { mutableStateOf(client == null) }
 
     LaunchedEffect(price, employeePrice) {
         if (autoCalculateCompany && price.isNotBlank() && employeePrice.isNotBlank()) {
             val totalPrice = price.toDoubleOrNull() ?: 0.0
             val empPrice = employeePrice.toDoubleOrNull() ?: 0.0
             val calculated = clientUseCases.calculateCompanyPrice(totalPrice, empPrice)
-            companyPrice = if (calculated > 0) calculated.toString() else ""
+            companyPrice = if (calculated >= 0) calculated.toString() else ""
         }
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSaving) onDismiss() },
         title = { Text(if (client == null) "Προσθήκη Πελάτη" else "Επεξεργασία Πελάτη") },
         text = {
             Column(
@@ -538,11 +685,12 @@ fun ClientFormDialog(
                     value = name,
                     onValueChange = {
                         name = it
-                        validationErrors = emptyList()
+                        validationErrors = validationErrors.filter { e -> e.field != "name" }
                     },
                     label = { Text("Όνομα Πελάτη *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = validationErrors.any { it.field == "name" },
+                    enabled = !isSaving,
                     supportingText = {
                         validationErrors.find { it.field == "name" }?.let {
                             Text(it.message, color = PayrollColors.Error)
@@ -550,16 +698,17 @@ fun ClientFormDialog(
                     }
                 )
 
-                // 🔄 ΠΡΩΤΑ: Total Price (η βάση!)
+                // Total Price
                 OutlinedTextField(
                     value = price,
                     onValueChange = {
                         price = it
-                        validationErrors = emptyList()
+                        validationErrors = validationErrors.filter { e -> e.field != "price" }
                     },
-                    label = { Text("Τιμή Πελάτη (€) * [ΒΑΣΗ]") },
+                    label = { Text("Τιμή Πελάτη (€) *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = validationErrors.any { it.field == "price" },
+                    enabled = !isSaving,
                     supportingText = {
                         validationErrors.find { it.field == "price" }?.let {
                             Text(it.message, color = PayrollColors.Error)
@@ -567,18 +716,19 @@ fun ClientFormDialog(
                     }
                 )
 
-                Divider(color = PayrollColors.DividerColor)
+                HorizontalDivider(color = PayrollColors.DividerColor)
 
                 // Employee Price
                 OutlinedTextField(
                     value = employeePrice,
                     onValueChange = {
                         employeePrice = it
-                        validationErrors = emptyList()
+                        validationErrors = validationErrors.filter { e -> e.field != "employeePrice" }
                     },
                     label = { Text("Τιμή Εργαζόμενου (€) *") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = validationErrors.any { it.field == "employeePrice" },
+                    enabled = !isSaving,
                     supportingText = {
                         validationErrors.find { it.field == "employeePrice" }?.let {
                             Text(it.message, color = PayrollColors.Error)
@@ -586,7 +736,7 @@ fun ClientFormDialog(
                     }
                 )
 
-                // Company Price (with auto-calculate)
+                // Company Price
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -596,12 +746,13 @@ fun ClientFormDialog(
                         value = companyPrice,
                         onValueChange = {
                             companyPrice = it
-                            autoCalculateCompany = false // Disable auto if manually edited
-                            validationErrors = emptyList()
+                            autoCalculateCompany = false
+                            validationErrors = validationErrors.filter { e -> e.field != "companyPrice" }
                         },
                         label = { Text("Τιμή Εταιρίας (€) *") },
                         modifier = Modifier.weight(1f),
                         isError = validationErrors.any { it.field == "companyPrice" },
+                        enabled = !isSaving,
                         supportingText = {
                             validationErrors.find { it.field == "companyPrice" }?.let {
                                 Text(it.message, color = PayrollColors.Error)
@@ -609,24 +760,24 @@ fun ClientFormDialog(
                         }
                     )
 
-                    // Auto-calculate button
                     IconButton(
                         onClick = {
                             autoCalculateCompany = true
                             val totalPrice = price.toDoubleOrNull() ?: 0.0
                             val empPrice = employeePrice.toDoubleOrNull() ?: 0.0
                             companyPrice = clientUseCases.calculateCompanyPrice(totalPrice, empPrice).toString()
-                        }
+                        },
+                        enabled = !isSaving
                     ) {
                         Icon(
                             Icons.Default.Calculate,
-                            contentDescription = "Auto-calculate company price",
+                            contentDescription = "Auto-calculate",
                             tint = if (autoCalculateCompany) PayrollColors.Primary else PayrollColors.TextSecondary
                         )
                     }
                 }
 
-                // 🆕 Real-time validation hint
+                // Validation hint
                 if (validationErrors.isEmpty() && price.isNotBlank() && employeePrice.isNotBlank() && companyPrice.isNotBlank()) {
                     val totalPrice = price.toDoubleOrNull() ?: 0.0
                     val empPrice = employeePrice.toDoubleOrNull() ?: 0.0
@@ -652,14 +803,14 @@ fun ClientFormDialog(
                             )
                             Column {
                                 Text(
-                                    text = "Άθροισμα: ${empPrice}€ + ${compPrice}€ = ${sum}€",
+                                    text = "Άθροισμα: ${empPrice.toEuroString()} + ${compPrice.toEuroString()} = ${sum.toEuroString()}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = if (diff <= 0.01) PayrollColors.Success else PayrollColors.Warning
                                 )
                                 if (diff > 0.01) {
                                     Text(
-                                        text = "Αναμενόμενο: ${totalPrice}€ (διαφορά: ${diff}€)",
+                                        text = "Αναμενόμενο: ${totalPrice.toEuroString()} (διαφορά: ${diff.toEuroString()})",
                                         fontSize = 11.sp,
                                         color = PayrollColors.TextSecondary
                                     )
@@ -673,47 +824,68 @@ fun ClientFormDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val newClient = ClientSimple(
-                        id = client?.id ?: "c${Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())}",
+                    val newClient = Client(
+                        id = client?.id ?: 0L,
                         name = name.trim(),
                         price = price.toDoubleOrNull() ?: 0.0,
                         employeePrice = employeePrice.toDoubleOrNull() ?: 0.0,
                         companyPrice = companyPrice.toDoubleOrNull() ?: 0.0,
-                        employeeId = employeeId
+                        employeeId = employeeId,
+                        pendingPayment = client?.pendingPayment ?: false
                     )
 
-                    val result = if (client == null) {
-                        clientUseCases.createClient(newClient, existingClients)
-                    } else {
-                        clientUseCases.updateClient(newClient, existingClients)
-                    }
+                    // Validate using ClientValidator
+                    val otherClients = existingClients.filter { it.id != client?.id }
+                    val validationResult = ClientValidator.validateClient(
+                        newClient.toClientSimple(),
+                        otherClients.map { it.toClientSimple() }
+                    )
 
-                    result.fold(
-                        onSuccess = { validClient ->
-                            onSave(validClient)
-                        },
-                        onFailure = { exception ->
-                            if (exception is ClientValidationException) {
-                                validationErrors = exception.errors
-                            }
+                    when (validationResult) {
+                        is ValidationResult.Valid -> {
+                            onSave(newClient)
                         }
-                    )
+                        is ValidationResult.Invalid -> {
+                            validationErrors = validationResult.errors
+                        }
+                    }
                 },
-                enabled = name.isNotBlank() &&
+                enabled = !isSaving &&
+                        name.isNotBlank() &&
                         price.toDoubleOrNull() != null &&
                         employeePrice.toDoubleOrNull() != null &&
                         companyPrice.toDoubleOrNull() != null
             ) {
-                Text("Αποθήκευση")
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(if (isSaving) "Αποθήκευση..." else "Αποθήκευση")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isSaving
+            ) {
                 Text("Ακύρωση")
             }
         }
     )
 }
+
+// Extension to convert Client to ClientSimple for validation
+private fun Client.toClientSimple() = com.payroll.app.desktop.domain.models.ClientSimple(
+    id = this.id.toString(),
+    name = this.name,
+    price = this.price,
+    employeePrice = this.employeePrice,
+    companyPrice = this.companyPrice,
+    employeeId = this.employeeId
+)
 
 @Preview
 @Composable
