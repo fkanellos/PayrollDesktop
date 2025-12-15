@@ -736,7 +736,8 @@ private fun CalendarDateField(
 private fun PayrollResults(
     result: com.payroll.app.desktop.domain.models.PayrollResponse,
     onExportPdf: () -> Unit,
-    onExportExcel: () -> Unit
+    onExportExcel: () -> Unit,
+    onNavigateToClients: () -> Unit = {}
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -795,6 +796,16 @@ private fun PayrollResults(
             }
         }
 
+        // Unmatched Events Section (if any)
+        result.eventTracking?.unmatchedEvents?.let { unmatchedEvents ->
+            if (unmatchedEvents.isNotEmpty()) {
+                UnmatchedEventsSection(
+                    unmatchedEvents = unmatchedEvents,
+                    onManageClients = onNavigateToClients
+                )
+            }
+        }
+
         // Export Options
         PayrollCard(
             title = "Εξαγωγή Αποτελεσμάτων"
@@ -834,13 +845,23 @@ private fun EnhancedClientBreakdownItem(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
+    // Calculate if there are any pending-related notes to show
+    val hasPending = client.pendingSessions > 0
+    val hasPaidPending = client.paidPendingCount > 0
+    val hasUnresolved = client.unresolvedPendingCount > 0
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (expanded) PayrollColors.Primary.copy(alpha = 0.05f) else PayrollColors.CardBackground
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = if (expanded) PayrollColors.Primary.copy(alpha = 0.3f) else PayrollColors.DividerColor
+            color = when {
+                hasUnresolved -> PayrollColors.Warning.copy(alpha = 0.5f)
+                hasPending -> Color(0xFF64748B).copy(alpha = 0.3f)
+                expanded -> PayrollColors.Primary.copy(alpha = 0.3f)
+                else -> PayrollColors.DividerColor
+            }
         )
     ) {
         Column {
@@ -873,18 +894,52 @@ private fun EnhancedClientBreakdownItem(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Text(
-                        text = "${client.sessions} συνεδρίες × ${client.employeePricePerSession.toEuroString()} = ${client.employeeEarnings.toEuroString()}",
-                        fontSize = 13.sp,
-                        color = PayrollColors.Success,
-                        fontWeight = FontWeight.Medium
-                    )
+                    // Session breakdown with pending info
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Sessions: ${client.sessions}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PayrollColors.OnSurface
+                        )
+                        Text(text = "|", fontSize = 13.sp, color = PayrollColors.DividerColor)
+                        Text(
+                            text = "Paid: ${client.totalRevenue.toEuroString()}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PayrollColors.Success
+                        )
+                    }
 
-                    Text(
-                        text = "Συνολικά έσοδα πελάτη: ${client.totalRevenue.toEuroString()}",
-                        fontSize = 12.sp,
-                        color = PayrollColors.TextSecondary
-                    )
+                    // Session type breakdown
+                    if (client.completedSessions > 0 || client.pendingSessions > 0 || client.paidPendingCount > 0) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            if (client.completedSessions > 0) {
+                                SessionBadge(
+                                    label = "Completed: ${client.completedSessions}",
+                                    color = PayrollColors.Success
+                                )
+                            }
+                            if (client.pendingSessions > 0) {
+                                SessionBadge(
+                                    label = "Pending: ${client.pendingSessions}",
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                            if (client.paidPendingCount > 0) {
+                                SessionBadge(
+                                    label = "Paid prev: ${client.paidPendingCount}",
+                                    color = Color(0xFF10B981)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -907,6 +962,39 @@ private fun EnhancedClientBreakdownItem(
                     contentDescription = if (expanded) "Σύμπτυξη" else "Επέκταση",
                     tint = PayrollColors.Primary
                 )
+            }
+
+            // Pending payment notes (always visible if applicable)
+            if (hasPending || hasPaidPending || hasUnresolved) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (hasPaidPending) {
+                        PendingNote(
+                            icon = "✅",
+                            text = "Includes ${(client.paidPendingCount * client.pricePerSession).toEuroString()} from ${client.paidPendingCount} pending payment(s)",
+                            color = PayrollColors.Success
+                        )
+                    }
+                    if (hasPending) {
+                        PendingNote(
+                            icon = "⏳",
+                            text = "${client.pendingSessions} pending (${(client.pendingSessions * client.pricePerSession).toEuroString()}) - will charge next time",
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                    if (hasUnresolved) {
+                        PendingNote(
+                            icon = "⚠️",
+                            text = "Client still owes ${client.unresolvedPendingCount} pending payment(s)",
+                            color = PayrollColors.Warning
+                        )
+                    }
+                }
             }
 
             // Expanded details
@@ -942,7 +1030,7 @@ private fun EnhancedClientBreakdownItem(
                     // Session details αν υπάρχουν
                     if (client.eventDetails.isNotEmpty()) {
                         Text(
-                            text = "📅 Συνεδρίες (${client.eventDetails.size})",
+                            text = "📅 Events (${client.eventDetails.size})",
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,
                             color = PayrollColors.OnSurface
@@ -951,13 +1039,13 @@ private fun EnhancedClientBreakdownItem(
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            client.eventDetails.take(3).forEach { event -> // Show first 3
-                                SessionItem(event)
+                            client.eventDetails.take(5).forEach { event ->
+                                SessionItem(event, client.pricePerSession)
                             }
 
-                            if (client.eventDetails.size > 3) {
+                            if (client.eventDetails.size > 5) {
                                 Text(
-                                    text = "... και ${client.eventDetails.size - 3} ακόμη συνεδρίες",
+                                    text = "... και ${client.eventDetails.size - 5} ακόμη συνεδρίες",
                                     fontSize = 12.sp,
                                     color = PayrollColors.TextSecondary,
                                     modifier = Modifier.padding(start = 8.dp)
@@ -968,6 +1056,52 @@ private fun EnhancedClientBreakdownItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SessionBadge(
+    label: String,
+    color: Color
+) {
+    Surface(
+        color = color.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = color,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun PendingNote(
+    icon: String,
+    text: String,
+    color: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = color.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(6.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = icon, fontSize = 12.sp)
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = color,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -996,19 +1130,24 @@ private fun FinancialItem(
 }
 
 @Composable
-private fun SessionItem(event: com.payroll.app.desktop.domain.models.EventDetail) {
-    val statusIcon = when (event.status) {
-        "completed" -> "✅"
-        "cancelled" -> "❌"
-        "pending_payment" -> "⏳"
-        else -> "📅"
+private fun SessionItem(
+    event: com.payroll.app.desktop.domain.models.EventDetail,
+    pricePerSession: Double = 0.0
+) {
+    // Determine status icon and color based on event status and pending flags
+    val (statusIcon, statusColor, statusText) = when {
+        event.paidForPending -> Triple("✅💰", PayrollColors.Success, "Paid for pending ${event.pendingDate ?: ""}")
+        event.isPending || event.status == "pending_payment" -> Triple("⏳", Color(0xFF64748B), "Pending Payment")
+        event.status == "completed" -> Triple("✅", PayrollColors.Success, "Completed")
+        event.status == "cancelled" -> Triple("❌", PayrollColors.Error, "Cancelled")
+        else -> Triple("📅", PayrollColors.TextSecondary, "")
     }
 
-    val statusColor = when (event.status) {
-        "completed" -> PayrollColors.Success
-        "cancelled" -> PayrollColors.Error
-        "pending_payment" -> PayrollColors.Warning
-        else -> PayrollColors.TextSecondary
+    // Calculate revenue display - pending payments show €0
+    val revenueText = if (event.isPending || event.status == "pending_payment") {
+        "€0"
+    } else {
+        pricePerSession.toEuroString()
     }
 
     Row(
@@ -1024,21 +1163,43 @@ private fun SessionItem(event: com.payroll.app.desktop.domain.models.EventDetail
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
         ) {
             Text(text = statusIcon, fontSize = 12.sp)
-            Text(
-                text = "${event.date} - ${event.time}",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Column {
+                Text(
+                    text = "${event.date} ${event.time}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                if (event.paidForPending && event.pendingDate != null) {
+                    Text(
+                        text = "(Paid for pending ${event.pendingDate})",
+                        fontSize = 10.sp,
+                        color = PayrollColors.Success,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
         }
 
-        Text(
-            text = event.duration,
-            fontSize = 11.sp,
-            color = PayrollColors.TextSecondary
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = event.duration,
+                fontSize = 11.sp,
+                color = PayrollColors.TextSecondary
+            )
+            Text(
+                text = revenueText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (event.isPending || event.status == "pending_payment") Color(0xFF64748B) else PayrollColors.Success
+            )
+        }
     }
 }
 
@@ -1072,6 +1233,151 @@ private fun EmptyClientBreakdownCard() {
                 fontSize = 14.sp,
                 color = PayrollColors.TextSecondary,
                 textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+/**
+ * Section to display unmatched events (names that don't match any client in database)
+ */
+@Composable
+private fun UnmatchedEventsSection(
+    unmatchedEvents: List<com.payroll.app.desktop.domain.models.UnmatchedEvent>,
+    onManageClients: () -> Unit = {}
+) {
+    if (unmatchedEvents.isEmpty()) return
+
+    // Get unique unmatched names
+    val uniqueNames = remember(unmatchedEvents) {
+        unmatchedEvents.map { it.title }.distinct().sorted()
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFFF3E0) // Light orange background
+        ),
+        border = BorderStroke(1.dp, Color(0xFFFF9800).copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Unmatched Events (${unmatchedEvents.size})",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color(0xFFE65100)
+                        )
+                        Text(
+                            text = "Names not found in client database",
+                            fontSize = 12.sp,
+                            color = Color(0xFFFF9800)
+                        )
+                    }
+                }
+
+                // Manage Clients button
+                OutlinedButton(
+                    onClick = onManageClients,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFFF9800)
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFFF9800))
+                ) {
+                    Text("Manage Clients")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFFFF9800).copy(alpha = 0.3f))
+
+            // List of unique unmatched names
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "Unmatched names:",
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                    color = Color(0xFFE65100)
+                )
+
+                // Display names in a wrapped flow
+                uniqueNames.forEach { name ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = Color(0xFFFFE0B2),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "•",
+                            fontSize = 14.sp,
+                            color = Color(0xFFFF9800),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = name,
+                            fontSize = 13.sp,
+                            color = Color(0xFFE65100),
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        // Count occurrences
+                        val count = unmatchedEvents.count { it.title == name }
+                        if (count > 1) {
+                            Surface(
+                                color = Color(0xFFFF9800).copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    text = "×$count",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFE65100),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Hint text
+            Text(
+                text = "Add these names as clients in 'Manage Clients' to include them in payroll calculations.",
+                fontSize = 11.sp,
+                color = Color(0xFFFF9800),
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
             )
         }
     }
