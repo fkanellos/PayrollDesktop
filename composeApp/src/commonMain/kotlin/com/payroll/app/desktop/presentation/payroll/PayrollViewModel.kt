@@ -168,9 +168,87 @@ class PayrollViewModel(
                 currentState.copy(syncResult = null)
             }
 
+            // Add unmatched client to database
+            is PayrollAction.AddUnmatchedClient -> {
+                addUnmatchedClient(
+                    name = action.name,
+                    price = action.price,
+                    employeePrice = action.employeePrice,
+                    companyPrice = action.companyPrice,
+                    employeeId = currentState.selectedEmployee?.id
+                )
+                // Optimistically add to addedClients set
+                currentState.copy(
+                    addedClients = currentState.addedClients + action.name
+                )
+            }
+
             // Error Handling
             PayrollAction.ClearError -> {
                 currentState.copy(error = null)
+            }
+        }
+    }
+
+    /**
+     * Add unmatched client to local database
+     */
+    private fun addUnmatchedClient(
+        name: String,
+        price: Double,
+        employeePrice: Double,
+        companyPrice: Double,
+        employeeId: String?
+    ) {
+        if (employeeId == null) {
+            emitSideEffect(PayrollEffect.ClientAddFailed(name, "No employee selected"))
+            return
+        }
+
+        scope.launch {
+            try {
+                // Create client via API (will be saved to backend and local DB)
+                val newClient = com.payroll.app.desktop.domain.models.Client(
+                    id = 0,
+                    name = name,
+                    price = price,
+                    employeePrice = employeePrice,
+                    companyPrice = companyPrice,
+                    employeeId = employeeId,
+                    pendingPayment = false
+                )
+
+                when (val result = payrollRepository.createClient(newClient)) {
+                    is RepositoryResult.Success -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowToast(
+                                "✅ Client '$name' added! (€$price: Employee €$employeePrice / Company €$companyPrice)"
+                            )
+                        )
+                        emitSideEffect(PayrollEffect.ClientAdded(name))
+                    }
+                    is RepositoryResult.Error -> {
+                        // Remove from addedClients on failure
+                        updateState { currentState ->
+                            currentState.copy(
+                                addedClients = currentState.addedClients - name
+                            )
+                        }
+                        emitSideEffect(
+                            PayrollEffect.ShowError("Failed to add client: ${result.exception.message}")
+                        )
+                        emitSideEffect(PayrollEffect.ClientAddFailed(name, result.exception.message ?: "Unknown error"))
+                    }
+                }
+            } catch (e: Exception) {
+                // Remove from addedClients on failure
+                updateState { currentState ->
+                    currentState.copy(
+                        addedClients = currentState.addedClients - name
+                    )
+                }
+                emitSideEffect(PayrollEffect.ShowError("Error adding client: ${e.message}"))
+                emitSideEffect(PayrollEffect.ClientAddFailed(name, e.message ?: "Unknown error"))
             }
         }
     }

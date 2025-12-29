@@ -90,6 +90,13 @@ class PayrollRepository(
     suspend fun getDatabaseStats(): RepositoryResult<DatabaseStatsResponse> {
         return apiService.getDatabaseStats()
     }
+
+    /**
+     * Create a new client
+     */
+    suspend fun createClient(client: Client): RepositoryResult<Client> {
+        return apiService.createClient(client)
+    }
 }
 
 /**

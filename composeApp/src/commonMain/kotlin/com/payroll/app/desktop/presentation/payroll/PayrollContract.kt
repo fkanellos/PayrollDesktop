@@ -25,7 +25,9 @@ data class PayrollState(
     val showEndDatePicker: Boolean = false,
     // Sync Database fields
     val isSyncing: Boolean = false,
-    val syncResult: SyncDatabaseResult? = null
+    val syncResult: SyncDatabaseResult? = null,
+    // Added unmatched clients (names added during this session)
+    val addedClients: Set<String> = emptySet()
 ) : UiState
 
 /**
@@ -81,6 +83,14 @@ sealed class PayrollAction : UiAction {
     object SyncDatabase : PayrollAction()
     object ClearSyncResult : PayrollAction()
 
+    // Add unmatched client to database
+    data class AddUnmatchedClient(
+        val name: String,
+        val price: Double = 50.0,
+        val employeePrice: Double = 22.5,
+        val companyPrice: Double = 27.5
+    ) : PayrollAction()
+
     // Error handling
     object ClearError : PayrollAction()
 }
@@ -116,6 +126,10 @@ sealed class PayrollEffect : UiEffect {
 
     // Sync Database effects
     data class SyncDatabaseComplete(val result: SyncDatabaseResult) : PayrollEffect()
+
+    // Client added effects
+    data class ClientAdded(val clientName: String) : PayrollEffect()
+    data class ClientAddFailed(val clientName: String, val error: String) : PayrollEffect()
 }
 
 /**
