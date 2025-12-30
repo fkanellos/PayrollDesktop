@@ -4,12 +4,15 @@ import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.export.ExportService
 import com.payroll.app.desktop.data.repositories.PayrollRepository
+import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.ClientPayrollDetail
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.domain.models.EmployeeInfo
 import com.payroll.app.desktop.domain.models.PayrollRequest
 import com.payroll.app.desktop.domain.models.PayrollResponse
 import com.payroll.app.desktop.domain.models.PayrollSummary
+import com.payroll.app.desktop.domain.service.ClientPersistenceResult
+import com.payroll.app.desktop.domain.service.ClientPersistenceService
 import com.payroll.app.desktop.utils.DateRanges
 import io.ktor.http.ContentDisposition.Companion.File
 import kotlinx.coroutines.*
@@ -25,9 +28,14 @@ import kotlinx.datetime.minus
  * PayrollViewModel implementing MVI pattern
  * Handles all payroll calculation logic and state management
  * Enhanced με calendar support και improved UX
+ *
+ * STANDALONE DESKTOP APP:
+ * - Uses ClientPersistenceService for local SQLite + Google Sheets writes
+ * - PayrollRepository still used for backward compatibility (will be migrated)
  */
 class PayrollViewModel(
     private val payrollRepository: PayrollRepository,
+    private val clientPersistenceService: ClientPersistenceService? = null,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 ) : BaseViewModel<PayrollState, PayrollAction, PayrollEffect>() {
 
@@ -191,7 +199,11 @@ class PayrollViewModel(
     }
 
     /**
-     * Add unmatched client to local database
+     * Add unmatched client to local database AND Google Sheets
+     *
+     * STANDALONE DESKTOP APP:
+     * - Uses ClientPersistenceService to save to SQLite + Sheets
+     * - Falls back to PayrollRepository API if service not available
      */
     private fun addUnmatchedClient(
         name: String,
@@ -200,15 +212,15 @@ class PayrollViewModel(
         companyPrice: Double,
         employeeId: String?
     ) {
-        if (employeeId == null) {
+        val currentEmployee = uiState.value.selectedEmployee
+        if (employeeId == null || currentEmployee == null) {
             emitSideEffect(PayrollEffect.ClientAddFailed(name, "No employee selected"))
             return
         }
 
         scope.launch {
             try {
-                // Create client via API (will be saved to backend and local DB)
-                val newClient = com.payroll.app.desktop.domain.models.Client(
+                val newClient = Client(
                     id = 0,
                     name = name,
                     price = price,
@@ -218,39 +230,87 @@ class PayrollViewModel(
                     pendingPayment = false
                 )
 
-                when (val result = payrollRepository.createClient(newClient)) {
-                    is RepositoryResult.Success -> {
-                        emitSideEffect(
-                            PayrollEffect.ShowToast(
-                                "✅ Client '$name' added! (€$price: Employee €$employeePrice / Company €$companyPrice)"
-                            )
-                        )
-                        emitSideEffect(PayrollEffect.ClientAdded(name))
-                    }
-                    is RepositoryResult.Error -> {
-                        // Remove from addedClients on failure
-                        updateState { currentState ->
-                            currentState.copy(
-                                addedClients = currentState.addedClients - name
-                            )
-                        }
-                        emitSideEffect(
-                            PayrollEffect.ShowError("Failed to add client: ${result.exception.message}")
-                        )
-                        emitSideEffect(PayrollEffect.ClientAddFailed(name, result.exception.message ?: "Unknown error"))
-                    }
+                // Use ClientPersistenceService if available (standalone mode)
+                if (clientPersistenceService != null) {
+                    addClientViaLocalService(newClient, currentEmployee)
+                } else {
+                    // Fallback to API (legacy mode)
+                    addClientViaApi(newClient)
                 }
             } catch (e: Exception) {
-                // Remove from addedClients on failure
-                updateState { currentState ->
-                    currentState.copy(
-                        addedClients = currentState.addedClients - name
-                    )
-                }
-                emitSideEffect(PayrollEffect.ShowError("Error adding client: ${e.message}"))
-                emitSideEffect(PayrollEffect.ClientAddFailed(name, e.message ?: "Unknown error"))
+                handleClientAddFailure(name, e.message ?: "Unknown error")
             }
         }
+    }
+
+    /**
+     * Add client via local ClientPersistenceService (STANDALONE MODE)
+     * Saves to SQLite + writes to Google Sheets
+     */
+    private suspend fun addClientViaLocalService(client: Client, employee: Employee) {
+        val service = clientPersistenceService ?: return
+
+        when (val result = service.addClient(client, employee)) {
+            is ClientPersistenceResult.Success -> {
+                val sheetsMsg = if (result.sheetsSaved) {
+                    " + Sheets (${result.sheetsRange})"
+                } else ""
+
+                emitSideEffect(
+                    PayrollEffect.ShowToast(
+                        "✅ Client '${client.name}' added to SQLite$sheetsMsg\n" +
+                                "(€${client.price}: Employee €${client.employeePrice} / Company €${client.companyPrice})"
+                    )
+                )
+                emitSideEffect(PayrollEffect.ClientAdded(client.name))
+            }
+
+            is ClientPersistenceResult.PartialSuccess -> {
+                // Saved locally but Sheets failed
+                emitSideEffect(
+                    PayrollEffect.ShowToast(
+                        "⚠️ Client '${client.name}' saved locally\n${result.message}"
+                    )
+                )
+                emitSideEffect(PayrollEffect.ClientAdded(client.name))
+            }
+
+            is ClientPersistenceResult.Error -> {
+                handleClientAddFailure(client.name, result.message)
+            }
+        }
+    }
+
+    /**
+     * Add client via PayrollRepository API (LEGACY/BACKEND MODE)
+     */
+    private suspend fun addClientViaApi(client: Client) {
+        when (val result = payrollRepository.createClient(client)) {
+            is RepositoryResult.Success -> {
+                emitSideEffect(
+                    PayrollEffect.ShowToast(
+                        "✅ Client '${client.name}' added! (€${client.price}: Employee €${client.employeePrice} / Company €${client.companyPrice})"
+                    )
+                )
+                emitSideEffect(PayrollEffect.ClientAdded(client.name))
+            }
+            is RepositoryResult.Error -> {
+                handleClientAddFailure(client.name, result.exception.message ?: "Unknown error")
+            }
+        }
+    }
+
+    /**
+     * Handle client add failure - update state and emit effects
+     */
+    private fun handleClientAddFailure(clientName: String, errorMessage: String) {
+        updateState { currentState ->
+            currentState.copy(
+                addedClients = currentState.addedClients - clientName
+            )
+        }
+        emitSideEffect(PayrollEffect.ShowError("Failed to add client: $errorMessage"))
+        emitSideEffect(PayrollEffect.ClientAddFailed(clientName, errorMessage))
     }
 
     /**
