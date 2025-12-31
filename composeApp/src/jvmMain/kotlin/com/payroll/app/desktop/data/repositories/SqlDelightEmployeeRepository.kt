@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.data.repositories
 
+import com.payroll.app.desktop.EmployeeEntity
 import com.payroll.app.desktop.database.PayrollDatabase
 import com.payroll.app.desktop.domain.models.Employee
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +63,7 @@ class SqlDelightEmployeeRepository(
     /**
      * Extension function to convert database row to domain model
      */
-    private fun com.payroll.app.desktop.database.EmployeeEntity.toEmployee(): Employee {
+    private fun EmployeeEntity.toEmployee(): Employee {
         return Employee(
             id = this.id,
             name = this.name,

@@ -4,12 +4,14 @@ import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.export.ExportService
 import com.payroll.app.desktop.data.repositories.PayrollRepository
+import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.ClientPayrollDetail
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.domain.models.EmployeeInfo
 import com.payroll.app.desktop.domain.models.PayrollRequest
 import com.payroll.app.desktop.domain.models.PayrollResponse
 import com.payroll.app.desktop.domain.models.PayrollSummary
+import com.payroll.app.desktop.domain.service.DatabaseSyncService
 import com.payroll.app.desktop.utils.DateRanges
 import io.ktor.http.ContentDisposition.Companion.File
 import kotlinx.coroutines.*
@@ -28,6 +30,7 @@ import kotlinx.datetime.minus
  */
 class PayrollViewModel(
     private val payrollRepository: PayrollRepository,
+    private val databaseSyncService: DatabaseSyncService,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 ) : BaseViewModel<PayrollState, PayrollAction, PayrollEffect>() {
 
@@ -208,7 +211,7 @@ class PayrollViewModel(
         scope.launch {
             try {
                 // Create client via API (will be saved to backend and local DB)
-                val newClient = com.payroll.app.desktop.domain.models.Client(
+                val newClient = Client(
                     id = 0,
                     name = name,
                     price = price,
@@ -259,57 +262,55 @@ class PayrollViewModel(
     private fun syncDatabase() {
         scope.launch {
             try {
-                emitSideEffect(PayrollEffect.ShowToast("🔄 Συγχρονισμός βάσης δεδομένων..."))
+                emitSideEffect(PayrollEffect.ShowToast("🔄 Συγχρονισμός βάσης δεδομένων από Google Sheets..."))
 
-                when (val result = payrollRepository.syncDatabase()) {
-                    is RepositoryResult.Success -> {
-                        val response = result.data
-                        val syncResult = SyncDatabaseResult(
-                            success = true,
-                            employeesInserted = response.employeesInserted,
-                            employeesUpdated = response.employeesUpdated,
-                            clientsInserted = response.clientsInserted,
-                            clientsUpdated = response.clientsUpdated,
-                            durationMs = response.durationMs
-                        )
+                val result = databaseSyncService.syncFromSheets()
 
-                        updateState { currentState ->
-                            currentState.copy(
-                                isSyncing = false,
-                                syncResult = syncResult
-                            )
-                        }
+                result.onSuccess { response ->
+                    val syncResult = SyncDatabaseResult(
+                        success = true,
+                        employeesInserted = response.employeesInserted,
+                        employeesUpdated = response.employeesUpdated,
+                        clientsInserted = response.clientsInserted,
+                        clientsUpdated = response.clientsUpdated,
+                        durationMs = response.durationMs
+                    )
 
-                        // Reload employees after sync
-                        loadEmployees()
-
-                        emitSideEffect(
-                            PayrollEffect.ShowToast(
-                                "✅ Συγχρονισμός ολοκληρώθηκε!\n" +
-                                        "Εργαζόμενοι: +${response.employeesInserted} / ↻${response.employeesUpdated}\n" +
-                                        "Πελάτες: +${response.clientsInserted} / ↻${response.clientsUpdated}"
-                            )
-                        )
-                        emitSideEffect(PayrollEffect.SyncDatabaseComplete(syncResult))
-                    }
-                    is RepositoryResult.Error -> {
-                        val syncResult = SyncDatabaseResult(
-                            success = false,
-                            errorMessage = result.exception.message
-                        )
-
-                        updateState { currentState ->
-                            currentState.copy(
-                                isSyncing = false,
-                                syncResult = syncResult,
-                                error = "Σφάλμα συγχρονισμού: ${result.exception.message}"
-                            )
-                        }
-
-                        emitSideEffect(
-                            PayrollEffect.ShowError("Σφάλμα συγχρονισμού: ${result.exception.message}")
+                    updateState { currentState ->
+                        currentState.copy(
+                            isSyncing = false,
+                            syncResult = syncResult
                         )
                     }
+
+                    // Reload employees after sync
+                    loadEmployees()
+
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "✅ Συγχρονισμός ολοκληρώθηκε!\n" +
+                                    "Εργαζόμενοι: +${response.employeesInserted} / ↻${response.employeesUpdated}\n" +
+                                    "Πελάτες: +${response.clientsInserted} / ↻${response.clientsUpdated}"
+                        )
+                    )
+                    emitSideEffect(PayrollEffect.SyncDatabaseComplete(syncResult))
+                }.onFailure { error ->
+                    val syncResult = SyncDatabaseResult(
+                        success = false,
+                        errorMessage = error.message
+                    )
+
+                    updateState { currentState ->
+                        currentState.copy(
+                            isSyncing = false,
+                            syncResult = syncResult,
+                            error = "Σφάλμα συγχρονισμού: ${error.message}"
+                        )
+                    }
+
+                    emitSideEffect(
+                        PayrollEffect.ShowError("Σφάλμα συγχρονισμού: ${error.message}")
+                    )
                 }
             } catch (e: Exception) {
                 val syncResult = SyncDatabaseResult(
@@ -508,6 +509,9 @@ class PayrollViewModel(
     }
 
     private fun exportToPdf(result: PayrollResponse) {
+        // TODO: Backend removed - implement local PDF export if needed
+        emitSideEffect(PayrollEffect.ShowError("PDF export not yet implemented for local mode"))
+        /* LEGACY BACKEND CODE - COMMENTED OUT
         scope.launch {
             try {
                 emitSideEffect(PayrollEffect.ShowToast("Δημιουργία PDF από backend..."))
@@ -521,7 +525,7 @@ class PayrollViewModel(
 
                 // Download PDF bytes from backend
                 when (val pdfResult = payrollRepository.downloadPdf(payrollId)) {
-                    is RepositoryResult.Success -> {
+                    is RepositoryResult.Success<*> -> {
                         // Generate filename
                         val timestamp = Clock.System.now().epochSeconds
                         val employeeName = result.employee.name.replace(" ", "_")
@@ -552,11 +556,13 @@ class PayrollViewModel(
                 emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής PDF: ${e.message}"))
             }
         }
+        */
     }
 
-    // 🔴 REPLACE the exportToExcel function in PayrollViewModel.kt
-
     private fun exportToExcel(result: PayrollResponse) {
+        // TODO: Backend removed - implement local Excel export if needed
+        emitSideEffect(PayrollEffect.ShowError("Excel export not yet implemented for local mode"))
+        /* LEGACY BACKEND CODE - COMMENTED OUT
         scope.launch {
             try {
                 // Check if we have payroll ID
@@ -613,12 +619,17 @@ class PayrollViewModel(
                 emitSideEffect(PayrollEffect.ShowError("Σφάλμα: ${e.message}"))
             }
         }
+        */
     }
 
     /**
      * 🆕 NEW: Confirm and execute Sheets sync
+     * LEGACY BACKEND CODE - COMMENTED OUT
      */
     fun confirmAndSyncToSheets(payrollId: String) {
+        // TODO: Backend removed - not needed for local mode
+        emitSideEffect(PayrollEffect.ShowError("Sheets sync not yet implemented for local mode"))
+        /* LEGACY BACKEND CODE - COMMENTED OUT
         scope.launch {
             try {
                 emitSideEffect(PayrollEffect.ShowToast("📤 Αποστολή στο Google Sheets..."))
@@ -671,6 +682,7 @@ class PayrollViewModel(
                 emitSideEffect(PayrollEffect.ShowError("Σφάλμα sync: ${e.message}"))
             }
         }
+        */
     }
 
     private fun emitSideEffect(effect: PayrollEffect) {

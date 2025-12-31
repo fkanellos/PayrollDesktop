@@ -26,9 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.payroll.app.desktop.core.network.PayrollApiService
-import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.presentation.payroll.*
 import com.payroll.app.desktop.ui.components.buttons.*
@@ -48,18 +45,14 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayrollScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: PayrollViewModel = koinInject()
 ) {
-    val payrollRepository = remember {
-        PayrollRepository(PayrollApiService())
-    }
-    val viewModel = remember {
-        PayrollViewModel(payrollRepository)
-    }
 
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()

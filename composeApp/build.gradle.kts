@@ -56,6 +56,7 @@ kotlin {
 
             // Koin DI
             implementation("io.insert-koin:koin-core:3.4.3")
+            implementation("io.insert-koin:koin-compose:1.0.4")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

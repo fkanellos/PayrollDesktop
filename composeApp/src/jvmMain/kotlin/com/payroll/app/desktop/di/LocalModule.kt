@@ -1,13 +1,10 @@
 package com.payroll.app.desktop.di
 
-import com.payroll.app.desktop.data.repositories.CalendarRepository
-import com.payroll.app.desktop.data.repositories.LocalClientRepository
-import com.payroll.app.desktop.data.repositories.LocalEmployeeRepository
-import com.payroll.app.desktop.data.repositories.SqlDelightClientRepository
-import com.payroll.app.desktop.data.repositories.SqlDelightEmployeeRepository
+import com.payroll.app.desktop.data.repositories.*
 import com.payroll.app.desktop.database.DriverFactory
 import com.payroll.app.desktop.database.PayrollDatabase
 import com.payroll.app.desktop.domain.service.ClientMatchingService
+import com.payroll.app.desktop.domain.service.DatabaseSyncService
 import com.payroll.app.desktop.domain.service.PayrollCalculationService
 import com.payroll.app.desktop.google.GoogleCalendarRepository
 import com.payroll.app.desktop.google.GoogleCredentialProvider
@@ -40,4 +37,10 @@ val localModule = module {
     // Services
     single { ClientMatchingService() }
     single { PayrollCalculationService(get()) }
+    single { DatabaseSyncService(get(), get(), get()) }
+
+    // Main Repositories (expect/actual)
+    single<PayrollRepository> { PayrollRepository(get(), get(), get(), get(), get()) }
+    single<EmployeeRepository> { EmployeeRepository(get(), get(), get()) }
+    single<ClientRepository> { ClientRepository(get(), get()) }
 }
