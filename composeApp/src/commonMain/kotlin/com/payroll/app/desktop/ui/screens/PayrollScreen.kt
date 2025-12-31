@@ -26,9 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.payroll.app.desktop.core.network.PayrollApiService
-import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.presentation.payroll.*
 import com.payroll.app.desktop.ui.components.buttons.*
@@ -48,18 +45,14 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayrollScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: PayrollViewModel = koinInject()
 ) {
-    val payrollRepository = remember {
-        PayrollRepository(PayrollApiService())
-    }
-    val viewModel = remember {
-        PayrollViewModel(payrollRepository)
-    }
 
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -120,7 +113,18 @@ fun PayrollScreen(
             PayrollResults(
                 result = result,
                 onExportPdf = { viewModel.handleAction(PayrollAction.ExportToPdf) },
-                onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) }
+                onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) },
+                onAddClient = { name, price, empPrice, compPrice ->
+                    viewModel.handleAction(
+                        PayrollAction.AddUnmatchedClient(
+                            name = name,
+                            price = price,
+                            employeePrice = empPrice,
+                            companyPrice = compPrice
+                        )
+                    )
+                },
+                addedClients = uiState.addedClients
             )
         }
 
@@ -737,7 +741,9 @@ private fun PayrollResults(
     result: com.payroll.app.desktop.domain.models.PayrollResponse,
     onExportPdf: () -> Unit,
     onExportExcel: () -> Unit,
-    onNavigateToClients: () -> Unit = {}
+    onNavigateToClients: () -> Unit = {},
+    onAddClient: (name: String, price: Double, employeePrice: Double, companyPrice: Double) -> Unit = { _, _, _, _ -> },
+    addedClients: Set<String> = emptySet()
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -798,10 +804,12 @@ private fun PayrollResults(
 
         // Unmatched Events Section (if any)
         result.eventTracking?.unmatchedEvents?.let { unmatchedEvents ->
-            if (unmatchedEvents.isNotEmpty()) {
+            if (unmatchedEvents.isNotEmpty() || addedClients.isNotEmpty()) {
                 UnmatchedEventsSection(
                     unmatchedEvents = unmatchedEvents,
-                    onManageClients = onNavigateToClients
+                    onManageClients = onNavigateToClients,
+                    onAddClient = onAddClient,
+                    addedClients = addedClients
                 )
             }
         }
@@ -1240,17 +1248,57 @@ private fun EmptyClientBreakdownCard() {
 
 /**
  * Section to display unmatched events (names that don't match any client in database)
+ * Now with quick-add functionality
  */
 @Composable
 private fun UnmatchedEventsSection(
     unmatchedEvents: List<com.payroll.app.desktop.domain.models.UnmatchedEvent>,
-    onManageClients: () -> Unit = {}
+    onManageClients: () -> Unit = {},
+    onAddClient: (name: String, price: Double, employeePrice: Double, companyPrice: Double) -> Unit = { _, _, _, _ -> },
+    addedClients: Set<String> = emptySet()
 ) {
     if (unmatchedEvents.isEmpty()) return
 
-    // Get unique unmatched names
-    val uniqueNames = remember(unmatchedEvents) {
-        unmatchedEvents.map { it.title }.distinct().sorted()
+    // Get unique unmatched names (excluding already added ones)
+    val uniqueNames = remember(unmatchedEvents, addedClients) {
+        unmatchedEvents.map { it.title }.distinct().sorted().filterNot { it in addedClients }
+    }
+
+    // State for editing
+    var editingName by remember { mutableStateOf<String?>(null) }
+    var editPrice by remember { mutableStateOf("50.0") }
+    var editEmployeePrice by remember { mutableStateOf("22.5") }
+    var editCompanyPrice by remember { mutableStateOf("27.5") }
+
+    if (uniqueNames.isEmpty() && addedClients.isNotEmpty()) {
+        // All clients have been added
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFE8F5E9) // Light green
+            ),
+            border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.5f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "All unmatched clients have been added! Re-calculate to see updated results.",
+                    fontSize = 14.sp,
+                    color = Color(0xFF2E7D32)
+                )
+            }
+        }
+        return
     }
 
     Card(
@@ -1289,7 +1337,7 @@ private fun UnmatchedEventsSection(
                             color = Color(0xFFE65100)
                         )
                         Text(
-                            text = "Names not found in client database",
+                            text = "Click + to add client with default prices",
                             fontSize = 12.sp,
                             color = Color(0xFFFF9800)
                         )
@@ -1316,69 +1364,213 @@ private fun UnmatchedEventsSection(
 
             HorizontalDivider(color = Color(0xFFFF9800).copy(alpha = 0.3f))
 
+            // Default prices info
+            Surface(
+                color = Color(0xFFFFE0B2),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Default prices:",
+                        fontSize = 12.sp,
+                        color = Color(0xFFE65100),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(text = "Total: €50", fontSize = 12.sp, color = Color(0xFFE65100))
+                    Text(text = "Employee: €22.5", fontSize = 12.sp, color = Color(0xFFE65100))
+                    Text(text = "Company: €27.5", fontSize = 12.sp, color = Color(0xFFE65100))
+                }
+            }
+
             // List of unique unmatched names
             Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Unmatched names:",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = Color(0xFFE65100)
-                )
-
-                // Display names in a wrapped flow
                 uniqueNames.forEach { name ->
-                    Row(
+                    val isEditing = editingName == name
+                    val count = unmatchedEvents.count { it.title == name }
+
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                color = Color(0xFFFFE0B2),
-                                shape = RoundedCornerShape(6.dp)
+                                color = if (isEditing) Color(0xFFFFCC80) else Color(0xFFFFE0B2),
+                                shape = RoundedCornerShape(8.dp)
                             )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "•",
-                            fontSize = 14.sp,
-                            color = Color(0xFFFF9800),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = name,
-                            fontSize = 13.sp,
-                            color = Color(0xFFE65100),
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        // Count occurrences
-                        val count = unmatchedEvents.count { it.title == name }
-                        if (count > 1) {
-                            Surface(
-                                color = Color(0xFFFF9800).copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(10.dp)
+                        // Name row with add button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "×$count",
-                                    fontSize = 11.sp,
+                                    text = name,
+                                    fontSize = 14.sp,
                                     color = Color(0xFFE65100),
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    fontWeight = FontWeight.Medium
                                 )
+                                if (count > 1) {
+                                    Surface(
+                                        color = Color(0xFFFF9800).copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text(
+                                            text = "×$count sessions",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFFE65100),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                // Edit button
+                                IconButton(
+                                    onClick = {
+                                        if (isEditing) {
+                                            editingName = null
+                                        } else {
+                                            editingName = name
+                                            editPrice = "50.0"
+                                            editEmployeePrice = "22.5"
+                                            editCompanyPrice = "27.5"
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        if (isEditing) Icons.Default.Close else Icons.Default.Edit,
+                                        contentDescription = if (isEditing) "Cancel" else "Edit prices",
+                                        tint = Color(0xFFFF9800),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                // Quick add button (with default values)
+                                if (!isEditing) {
+                                    IconButton(
+                                        onClick = {
+                                            onAddClient(name, 50.0, 22.5, 27.5)
+                                        },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(
+                                                color = Color(0xFF4CAF50),
+                                                shape = RoundedCornerShape(6.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "Add client",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Editable prices row (when editing)
+                        if (isEditing) {
+                            HorizontalDivider(color = Color(0xFFFF9800).copy(alpha = 0.3f))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Price field
+                                OutlinedTextField(
+                                    value = editPrice,
+                                    onValueChange = { editPrice = it },
+                                    label = { Text("Total €", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                                )
+
+                                // Employee price field
+                                OutlinedTextField(
+                                    value = editEmployeePrice,
+                                    onValueChange = { editEmployeePrice = it },
+                                    label = { Text("Employee €", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                                )
+
+                                // Company price field
+                                OutlinedTextField(
+                                    value = editCompanyPrice,
+                                    onValueChange = { editCompanyPrice = it },
+                                    label = { Text("Company €", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                                )
+
+                                // Save button
+                                Button(
+                                    onClick = {
+                                        val price = editPrice.toDoubleOrNull() ?: 50.0
+                                        val empPrice = editEmployeePrice.toDoubleOrNull() ?: 22.5
+                                        val compPrice = editCompanyPrice.toDoubleOrNull() ?: 27.5
+                                        onAddClient(name, price, empPrice, compPrice)
+                                        editingName = null
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF4CAF50)
+                                    )
+                                ) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Add")
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Hint text
-            Text(
-                text = "Add these names as clients in 'Manage Clients' to include them in payroll calculations.",
-                fontSize = 11.sp,
-                color = Color(0xFFFF9800),
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-            )
+            // Added clients info
+            if (addedClients.isNotEmpty()) {
+                HorizontalDivider(color = Color(0xFFFF9800).copy(alpha = 0.3f))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "${addedClients.size} client(s) added. Re-calculate to update results.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF4CAF50),
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
         }
     }
 }

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">Σύστημα Μισθοδοσίας</string>
+    <string name="app_subtitle">Αυτοματοποιημένος υπολογισμός μισθών από Google Calendar</string>
+
+    <!-- Common -->
+    <string name="loading">Φόρτωση...</string>
+    <string name="error">Σφάλμα</string>
+    <string name="success">Επιτυχία</string>
+    <string name="cancel">Ακύρωση</string>
+    <string name="save">Αποθήκευση</string>
+    <string name="delete">Διαγραφή</string>
+    <string name="edit">Επεξεργασία</string>
+    <string name="add">Προσθήκη</string>
+    <string name="close">Κλείσιμο</string>
+    <string name="refresh">Ανανέωση</string>
+    <string name="search">Αναζήτηση</string>
+    <string name="clear">Καθαρισμός</string>
+    <string name="confirm">Επιβεβαίωση</string>
+    <string name="dismiss">Απόρριψη</string>
+    <string name="saving">Αποθήκευση...</string>
+
+    <!-- Payroll Screen -->
+    <string name="payroll_system">Σύστημα Μισθοδοσίας</string>
+    <string name="sync_database">Συγχρονισμός Βάσης</string>
+    <string name="syncing">Συγχρονισμός...</string>
+    <string name="payroll_calculation">Υπολογισμός Μισθοδοσίας</string>
+    <string name="select_employee_and_period">Επιλέξτε εργαζόμενο και περίοδο</string>
+    <string name="employee">Εργαζόμενος</string>
+    <string name="select_employee">Επιλέξτε εργαζόμενο...</string>
+    <string name="selected_employee">Επιλεγμένος: %s</string>
+    <string name="no_employees_found">Δεν βρέθηκαν εργαζόμενοι</string>
+
+    <!-- Period Selection -->
+    <string name="quick_period_selection">Γρήγορη Επιλογή Περιόδου</string>
+    <string name="custom_dates">Προσαρμοσμένες Ημερομηνίες</string>
+    <string name="custom_period">Προσαρμοσμένη Περίοδος</string>
+    <string name="select_period">Επιλέξτε περίοδο...</string>
+    <string name="select_custom_dates">Επιλέξτε συγκεκριμένες ημερομηνίες</string>
+    <string name="active">Ενεργές</string>
+    <string name="from_date">Από (Ημερομηνία)</string>
+    <string name="to_date">Έως (Ημερομηνία)</string>
+    <string name="select_date">Επιλέξτε ημερομηνία</string>
+    <string name="custom_dates_hint">Επιλέξτε συγκεκριμένες ημερομηνίες για προσαρμοσμένη περίοδο</string>
+    <string name="expand">Επέκταση</string>
+    <string name="collapse">Σύμπτυξη</string>
+
+    <!-- Predefined Periods -->
+    <string name="two_work_weeks">2 Εργάσιμες Εβδομάδες</string>
+    <string name="this_work_week">Τρέχουσα Εβδομάδα</string>
+    <string name="last_work_week">Προηγούμενη Εβδομάδα</string>
+    <string name="last_two_weeks">Τελευταίες 2 Εβδομάδες</string>
+    <string name="this_month">Τρέχων Μήνας</string>
+    <string name="last_month">Προηγούμενος Μήνας</string>
+    <string name="last_10_workdays">Τελευταίες 10 Εργάσιμες</string>
+    <string name="today">Σήμερα</string>
+
+    <!-- Calculate -->
+    <string name="calculate_payroll">Υπολογισμός Μισθοδοσίας</string>
+    <string name="calculating">Υπολογισμός σε εξέλιξη...</string>
+    <string name="calculation_in_progress">Υπολογισμός σε εξέλιξη...</string>
+    <string name="fetching_calendar_data">Ανάκτηση δεδομένων από Google Calendar</string>
+
+    <!-- Results -->
+    <string name="summary_results">Συγκεντρωτικά Αποτελέσματα</string>
+    <string name="total_sessions">Συνολικές Συνεδρίες</string>
+    <string name="total_revenue">Συνολικά Έσοδα</string>
+    <string name="employee_earnings">Μισθός Εργαζομένου</string>
+    <string name="company_earnings">Κέρδη Εταιρίας</string>
+    <string name="detailed_breakdown">Αναλυτικά Στοιχεία ανά Πελάτη</string>
+    <string name="detailed_breakdown_subtitle">Λεπτομερής ανάλυση συνεδριών και εσόδων</string>
+    <string name="no_sessions_found">Δεν βρέθηκαν συνεδρίες</string>
+    <string name="check_calendar_entries">Ελέγξτε αν υπάρχουν εγγραφές στο Google Calendar για την επιλεγμένη περίοδο</string>
+
+    <!-- Client Breakdown -->
+    <string name="sessions">Sessions: %d</string>
+    <string name="paid">Paid: %s</string>
+    <string name="completed">Completed: %d</string>
+    <string name="pending">Pending: %d</string>
+    <string name="paid_prev">Paid prev: %d</string>
+    <string name="employee_share">Μερίδιο εργαζομένου</string>
+    <string name="price_per_session">Τιμή/Συνεδρία</string>
+    <string name="employee_price">Εργαζόμενος</string>
+    <string name="company_price">Εταιρία</string>
+    <string name="events_count">Events (%d)</string>
+    <string name="more_sessions">... και %d ακόμη συνεδρίες</string>
+
+    <!-- Session Status -->
+    <string name="completed_status">Completed</string>
+    <string name="pending_payment">Pending Payment</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="paid_for_pending">Paid for pending %s</string>
+
+    <!-- Pending Notes -->
+    <string name="includes_paid_pending">Includes %s from %d pending payment(s)</string>
+    <string name="pending_will_charge">%d pending (%s) - will charge next time</string>
+    <string name="client_owes_pending">Client still owes %d pending payment(s)</string>
+
+    <!-- Unmatched Events -->
+    <string name="unmatched_events">Unmatched Events (%d)</string>
+    <string name="unmatched_events_hint">Click + to add client with default prices</string>
+    <string name="manage_clients">Manage Clients</string>
+    <string name="default_prices">Default prices:</string>
+    <string name="total_price">Total: €%s</string>
+    <string name="employee_price_label">Employee: €%s</string>
+    <string name="company_price_label">Company: €%s</string>
+    <string name="sessions_count">×%d sessions</string>
+    <string name="clients_added">%d client(s) added. Re-calculate to update results.</string>
+    <string name="all_clients_added">All unmatched clients have been added! Re-calculate to see updated results.</string>
+
+    <!-- Export -->
+    <string name="export_results">Εξαγωγή Αποτελεσμάτων</string>
+    <string name="export_pdf">Εξαγωγή PDF</string>
+    <string name="export_excel">Εξαγωγή Excel</string>
+    <string name="send_email">Αποστολή Email</string>
+    <string name="pdf_export_not_implemented">PDF export not yet implemented for local mode</string>
+    <string name="excel_export_not_implemented">Excel export not yet implemented for local mode</string>
+
+    <!-- Employee Management -->
+    <string name="employee_management">Διαχείριση Εργαζομένων</string>
+    <string name="employees_count">%d εργαζόμενοι στο σύστημα</string>
+    <string name="add_employee">Προσθήκη Εργαζομένου</string>
+    <string name="edit_employee">Επεξεργασία Εργαζομένου</string>
+    <string name="delete_employee">Διαγραφή Εργαζομένου</string>
+    <string name="delete_employee_confirm">Είστε σίγουροι ότι θέλετε να διαγράψετε τον εργαζόμενο \'%s\'?\n\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.</string>
+    <string name="search_employees">Αναζήτηση εργαζομένων...</string>
+    <string name="no_results_found">Δεν βρέθηκαν αποτελέσματα</string>
+    <string name="no_employees">Δεν υπάρχουν εργαζόμενοι</string>
+    <string name="try_different_search">Δοκιμάστε διαφορετικούς όρους αναζήτησης</string>
+    <string name="add_employees_to_start">Προσθέστε εργαζόμενους για να ξεκινήσετε</string>
+
+    <!-- Employee Form -->
+    <string name="name">Όνομα</string>
+    <string name="name_required">Το όνομα είναι υποχρεωτικό</string>
+    <string name="email">Email</string>
+    <string name="calendar_id">Calendar ID</string>
+    <string name="calendar_id_required">Το Calendar ID είναι υποχρεωτικό</string>
+    <string name="sheet_name">Sheet Name</string>
+    <string name="supervision_price">Τιμή Επίβλεψης (€)</string>
+    <string name="color_hex">Χρώμα (HEX)</string>
+    <string name="actions">Ενέργειες</string>
+
+    <!-- Client Management -->
+    <string name="client_management">Διαχείριση Πελατών</string>
+    <string name="clients_count">%d πελάτες στο σύστημα</string>
+    <string name="add_client">Προσθήκη Πελάτη</string>
+    <string name="edit_client">Επεξεργασία Πελάτη</string>
+    <string name="delete_client">Διαγραφή Πελάτη</string>
+    <string name="delete_client_confirm">Είστε σίγουροι ότι θέλετε να διαγράψετε τον πελάτη \'%s\'?\n\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.</string>
+    <string name="search_clients">Αναζήτηση πελατών...</string>
+    <string name="no_clients">Δεν υπάρχουν πελάτες</string>
+    <string name="add_clients_to_start">Προσθέστε πελάτες για να ξεκινήσετε</string>
+    <string name="select_employee_filter">Επιλέξτε εργαζόμενο για φιλτράρισμα...</string>
+    <string name="all_employees">Όλοι οι Εργαζόμενοι</string>
+    <string name="filter_by_employee">Φιλτράρισμα ανά Εργαζόμενο</string>
+
+    <!-- Client Form -->
+    <string name="client_name">Όνομα Πελάτη</string>
+    <string name="client_name_required">Το όνομα πελάτη είναι υποχρεωτικό</string>
+    <string name="price">Τιμή (€)</string>
+    <string name="price_required">Η τιμή είναι υποχρεωτική</string>
+    <string name="employee_price_euro">Τιμή Εργαζομένου (€)</string>
+    <string name="company_price_euro">Τιμή Εταιρίας (€)</string>
+    <string name="assigned_employee">Εργαζόμενος</string>
+    <string name="assigned_employee_required">Ο εργαζόμενος είναι υποχρεωτικός</string>
+
+    <!-- Messages & Toasts -->
+    <string name="creating_pdf">Δημιουργία PDF από backend...</string>
+    <string name="pdf_created">PDF δημιουργήθηκε!\nΣώθηκε: %s</string>
+    <string name="error_downloading_pdf">Σφάλμα λήψης PDF: %s</string>
+    <string name="error_exporting_pdf">Σφάλμα εξαγωγής PDF: %s</string>
+    <string name="payroll_id_not_found">Δεν βρέθηκε ID payroll</string>
+    <string name="error_generic">Σφάλμα: %s</string>
+    <string name="employee_created">Εργαζόμενος δημιουργήθηκε</string>
+    <string name="employee_updated">Εργαζόμενος ενημερώθηκε</string>
+    <string name="employee_deleted">Εργαζόμενος διαγράφηκε</string>
+    <string name="client_created">Πελάτης δημιουργήθηκε</string>
+    <string name="client_updated">Πελάτης ενημερώθηκε</string>
+    <string name="client_deleted">Πελάτης διαγράφηκε</string>
+    <string name="client_added">Πελάτης προστέθηκε</string>
+
+    <!-- Warnings -->
+    <string name="warning">Προειδοποίηση</string>
+    <string name="sheet_creation_failed">Αποτυχία δημιουργίας φύλλου για τον εργαζόμενο %s</string>
+
+    <!-- Loading States -->
+    <string name="loading_employees">Φόρτωση εργαζομένων...</string>
+    <string name="loading_clients">Φόρτωση πελατών...</string>
+
+    <!-- Date & Time -->
+    <string name="select_start_date">Επιλογή Ημερομηνίας Έναρξης</string>
+    <string name="select_end_date">Επιλογή Ημερομηνίας Λήξης</string>
+    <string name="select_date_label">Επιλογή</string>
+
+    <!-- Info Messages -->
+    <string name="predefined_period">Προκαθορισμένη περίοδος: %s</string>
+    <string name="custom_period_info">Προσαρμοσμένη περίοδος - μπορείτε να επιλέξετε από τις παραπάνω</string>
+
+    <!-- Sheets Sync -->
+    <string name="sheets_sync_not_implemented">Sheets sync not yet implemented for local mode</string>
+    <string name="update_sheets">Ενημέρωση Sheets</string>
+    <string name="send_to_sheets">Αποστολή σε Sheets</string>
+    <string name="old_data_will_be_replaced">Τα παλιά δεδομένα θα διαγραφούν και θα αντικατασταθούν.</string>
+    <string name="update">Ενημέρωση</string>
+    <string name="send">Αποστολή</string>
+</resources>

@@ -18,9 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.payroll.app.desktop.core.network.PayrollApiService
-import com.payroll.app.desktop.data.repositories.ClientRepository
-import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.domain.usecases.ClientUseCases
@@ -36,15 +33,12 @@ import com.payroll.app.desktop.utils.toEuroString
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
- * Client Management Screen - Connected to Backend API
+ * Client Management Screen
  */
 @Composable
-fun ClientManagementScreen() {
-    // Create dependencies
-    val apiService = remember { PayrollApiService() }
-    val payrollRepository = remember { PayrollRepository(apiService) }
-    val clientRepository = remember { ClientRepository(apiService) }
-    val viewModel = remember { ClientManagementViewModel(payrollRepository, clientRepository) }
+fun ClientManagementScreen(
+    viewModel: ClientManagementViewModel = org.koin.compose.koinInject()
+) {
 
     val uiState by viewModel.uiState.collectAsState()
 

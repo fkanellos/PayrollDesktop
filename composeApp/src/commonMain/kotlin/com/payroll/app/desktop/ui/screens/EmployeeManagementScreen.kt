@@ -18,8 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.payroll.app.desktop.core.network.PayrollApiService
-import com.payroll.app.desktop.data.repositories.EmployeeRepository
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.presentation.employee.EmployeeManagementAction
 import com.payroll.app.desktop.presentation.employee.EmployeeManagementEffect
@@ -58,10 +56,9 @@ private fun parseHexColor(hexColor: String): Color {
  * Employee Management Screen
  */
 @Composable
-fun EmployeeManagementScreen() {
-    val apiService = remember { PayrollApiService() }
-    val employeeRepository = remember { EmployeeRepository(apiService) }
-    val viewModel = remember { EmployeeManagementViewModel(employeeRepository) }
+fun EmployeeManagementScreen(
+    viewModel: EmployeeManagementViewModel = org.koin.compose.koinInject()
+) {
 
     val uiState by viewModel.uiState.collectAsState()
 
