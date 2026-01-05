@@ -1,0 +1,139 @@
+-- Employee table
+CREATE TABLE EmployeeEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL DEFAULT '',
+    calendar_id TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '',
+    sheet_name TEXT NOT NULL DEFAULT '',
+    supervision_price REAL NOT NULL DEFAULT 0.0
+);
+
+-- Client table
+CREATE TABLE ClientEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL DEFAULT 0.0,
+    employee_price REAL NOT NULL DEFAULT 0.0,
+    company_price REAL NOT NULL DEFAULT 0.0,
+    employee_id TEXT NOT NULL,
+    pending_payment INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (employee_id) REFERENCES EmployeeEntity(id) ON DELETE CASCADE
+);
+
+-- Index for faster lookups
+CREATE INDEX idx_client_employee_id ON ClientEntity(employee_id);
+
+-- Match Confirmation table
+-- Stores user confirmations for uncertain client name matches
+CREATE TABLE MatchConfirmationEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    event_title_normalized TEXT NOT NULL,  -- Normalized event title for matching
+    matched_client_name TEXT NOT NULL,     -- The client name that was confirmed
+    employee_id TEXT NOT NULL,             -- Which employee this applies to
+    created_at INTEGER NOT NULL,           -- Timestamp when created
+    FOREIGN KEY (employee_id) REFERENCES EmployeeEntity(id) ON DELETE CASCADE,
+    UNIQUE(event_title_normalized, employee_id)  -- One confirmation per event title per employee
+);
+
+-- Index for fast lookups during payroll calculation
+CREATE INDEX idx_match_confirmation_lookup ON MatchConfirmationEntity(event_title_normalized, employee_id);
+
+-- ============================================================
+-- EMPLOYEE QUERIES
+-- ============================================================
+
+selectAllEmployees:
+SELECT * FROM EmployeeEntity ORDER BY name;
+
+selectEmployeeById:
+SELECT * FROM EmployeeEntity WHERE id = ?;
+
+insertEmployee:
+INSERT OR REPLACE INTO EmployeeEntity (id, name, email, calendar_id, color, sheet_name, supervision_price)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateEmployee:
+UPDATE EmployeeEntity SET name = ?, email = ?, calendar_id = ?, color = ?, sheet_name = ?, supervision_price = ?
+WHERE id = ?;
+
+deleteEmployee:
+DELETE FROM EmployeeEntity WHERE id = ?;
+
+deleteAllEmployees:
+DELETE FROM EmployeeEntity;
+
+countEmployees:
+SELECT COUNT(*) FROM EmployeeEntity;
+
+-- ============================================================
+-- CLIENT QUERIES
+-- ============================================================
+
+selectAllClients:
+SELECT * FROM ClientEntity ORDER BY name;
+
+selectClientById:
+SELECT * FROM ClientEntity WHERE id = ?;
+
+selectClientsByEmployeeId:
+SELECT * FROM ClientEntity WHERE employee_id = ? ORDER BY name;
+
+selectClientByName:
+SELECT * FROM ClientEntity WHERE name = ? LIMIT 1;
+
+selectClientByEmployeeIdAndName:
+SELECT * FROM ClientEntity WHERE employee_id = ? AND name = ? LIMIT 1;
+
+insertClient:
+INSERT INTO ClientEntity (name, price, employee_price, company_price, employee_id, pending_payment)
+VALUES (?, ?, ?, ?, ?, ?);
+
+updateClient:
+UPDATE ClientEntity SET name = ?, price = ?, employee_price = ?, company_price = ?, employee_id = ?, pending_payment = ?
+WHERE id = ?;
+
+deleteClient:
+DELETE FROM ClientEntity WHERE id = ?;
+
+deleteClientsByEmployeeId:
+DELETE FROM ClientEntity WHERE employee_id = ?;
+
+deleteAllClients:
+DELETE FROM ClientEntity;
+
+countClients:
+SELECT COUNT(*) FROM ClientEntity;
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
+-- ============================================================
+-- MATCH CONFIRMATION QUERIES
+-- ============================================================
+
+selectMatchConfirmation:
+SELECT * FROM MatchConfirmationEntity
+WHERE event_title_normalized = ? AND employee_id = ?
+LIMIT 1;
+
+selectAllMatchConfirmations:
+SELECT * FROM MatchConfirmationEntity ORDER BY created_at DESC;
+
+selectMatchConfirmationsByEmployee:
+SELECT * FROM MatchConfirmationEntity
+WHERE employee_id = ?
+ORDER BY created_at DESC;
+
+insertMatchConfirmation:
+INSERT OR REPLACE INTO MatchConfirmationEntity (event_title_normalized, matched_client_name, employee_id, created_at)
+VALUES (?, ?, ?, ?);
+
+deleteMatchConfirmation:
+DELETE FROM MatchConfirmationEntity WHERE id = ?;
+
+deleteMatchConfirmationsByEmployee:
+DELETE FROM MatchConfirmationEntity WHERE employee_id = ?;
+
+deleteAllMatchConfirmations:
+DELETE FROM MatchConfirmationEntity;

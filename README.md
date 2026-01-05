@@ -1,48 +1,95 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Desktop (JVM).
+# Payroll Desktop
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+A desktop application for managing psychologist payroll calculations based on Google Calendar appointments.
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+## Status: Work in Progress
 
-### Build and Run Android Application
+This is an active development project built to solve a real-world problem in my practice. Core functionality is working, but some features are still being developed.
 
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
+## What It Does
 
-### Build and Run Desktop (JVM) Application
+- Syncs client data from Google Sheets
+- Reads appointments from Google Calendar
+- Calculates payroll based on session attendance
+- Tracks matched/unmatched calendar events
+- Stores data locally with SQLite
 
-To build and run the development version of the desktop app, use the run configuration from the run widget
-in your IDE’s toolbar or run it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:run
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:run
-  ```
+## Tech Stack
 
-### Build and Run iOS Application
+- **Kotlin Multiplatform** - Targeting Desktop (JVM) initially
+- **Compose Multiplatform** - UI framework
+- **SQLDelight** - Type-safe SQL
+- **Koin** - Dependency injection
+- **Google APIs** - Calendar and Sheets integration
+- **KSafe** - Encrypted credential storage
 
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+## Current Features
 
----
+### Working
+- Google Calendar integration with OAuth
+- Google Sheets data synchronization
+- Local SQLite database for offline access
+- Client name matching (exact and fuzzy)
+- Session counting and payroll calculation
+- Client breakdown by employee
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+### In Development
+- Export to PDF/Excel
+- Advanced reporting
+- Multi-employee support improvements
+- Better error handling
+
+## Setup
+
+### Requirements
+- Java 11+
+- Google Cloud Platform account
+- Google Calendar and Sheets APIs enabled
+
+### Quick Start
+
+1. Clone the repository
+2. See [SETUP.md](SETUP.md) for detailed Google Cloud configuration
+3. Run the application:
+   ```bash
+   ./gradlew :composeApp:run
+   ```
+
+## Security
+
+- OAuth credentials are **encrypted** using [KSafe](https://github.com/ioannisa/KSafe)
+- No hardcoded secrets in codebase
+- Local data stored in `~/.payroll-app/`
+
+## Architecture
+
+```
+composeApp/
+├── src/commonMain/     # Shared Kotlin code
+│   ├── domain/         # Business logic
+│   ├── data/           # Repositories
+│   └── ui/             # Compose UI
+├── src/jvmMain/        # Desktop-specific code
+│   ├── google/         # Google API integration
+│   ├── database/       # SQLDelight setup
+│   └── di/             # Koin modules
+└── src/commonMain/sqldelight/  # SQL schemas
+```
+
+## Known Issues
+
+- Calendar event matching sometimes requires manual confirmation
+- Spreadsheet format must follow specific structure
+- No automated tests yet (planned)
+
+## Why This Project?
+
+I built this to automate payroll calculations for a psychology practice. Previously, this was done manually with spreadsheets, which was error-prone and time-consuming. The app is actively used in production with real data.
+
+## License
+
+Private project - not for distribution
+
+## Contact
+
+For questions about the code or approach, feel free to reach out.

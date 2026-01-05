@@ -19,8 +19,31 @@ data class PayrollState(
     val payrollResult: PayrollResponse? = null,
     val isCalculating: Boolean = false,
     val showDatePicker: Boolean = false,
-    val datePickerType: DatePickerType = DatePickerType.START
+    val datePickerType: DatePickerType = DatePickerType.START,
+    // Enhanced fields
+    val showStartDatePicker: Boolean = false,
+    val showEndDatePicker: Boolean = false,
+    // Sync Database fields
+    val isSyncing: Boolean = false,
+    val syncResult: SyncDatabaseResult? = null,
+    // Added unmatched clients (names added during this session)
+    val addedClients: Set<String> = emptySet(),
+    // Uncertain matches needing user confirmation
+    val uncertainMatches: List<UncertainMatch> = emptyList()
 ) : UiState
+
+/**
+ * Sync database result
+ */
+data class SyncDatabaseResult(
+    val success: Boolean,
+    val employeesInserted: Int = 0,
+    val employeesUpdated: Int = 0,
+    val clientsInserted: Int = 0,
+    val clientsUpdated: Int = 0,
+    val durationMs: Long = 0,
+    val errorMessage: String? = null
+)
 
 enum class DatePickerType {
     START, END
@@ -37,12 +60,18 @@ sealed class PayrollAction : UiAction {
     // Employee selection
     data class SelectEmployee(val employee: Employee) : PayrollAction()
 
-    // Date selection
+    // Date selection - Enhanced με calendar picker support
     data class SetStartDate(val date: LocalDateTime) : PayrollAction()
     data class SetEndDate(val date: LocalDateTime) : PayrollAction()
     data class ShowDatePicker(val type: DatePickerType) : PayrollAction()
     object HideDatePicker : PayrollAction()
     object SetDefaultDateRange : PayrollAction()
+
+    // New calendar picker actions
+    object ShowStartDatePicker : PayrollAction()
+    object ShowEndDatePicker : PayrollAction()
+    object HideStartDatePicker : PayrollAction()
+    object HideEndDatePicker : PayrollAction()
 
     // Payroll calculation
     object CalculatePayroll : PayrollAction()
@@ -51,6 +80,23 @@ sealed class PayrollAction : UiAction {
     // Export actions
     object ExportToPdf : PayrollAction()
     object ExportToExcel : PayrollAction()
+
+    // Sync Database actions
+    object SyncDatabase : PayrollAction()
+    object ClearSyncResult : PayrollAction()
+
+    // Add unmatched client to database
+    data class AddUnmatchedClient(
+        val name: String,
+        val price: Double = 50.0,
+        val employeePrice: Double = 22.5,
+        val companyPrice: Double = 27.5
+    ) : PayrollAction()
+
+    // Match confirmation actions
+    data class ConfirmMatch(val match: UncertainMatch) : PayrollAction()
+    data class RejectMatch(val match: UncertainMatch) : PayrollAction()
+    object ClearUncertainMatches : PayrollAction()
 
     // Error handling
     object ClearError : PayrollAction()
@@ -72,9 +118,25 @@ sealed class PayrollEffect : UiEffect {
     data class SavePdfFile(val filename: String, val data: ByteArray) : PayrollEffect()
     data class SaveExcelFile(val filename: String, val data: ByteArray) : PayrollEffect()
 
+    /**
+     * 🆕 Request confirmation για Google Sheets sync
+     */
+    data class RequestSheetsConfirmation(
+        val payrollId: String,
+        val message: String,
+        val isUpdate: Boolean
+    ) : PayrollEffect()
+
     // System operations
     data class OpenUrl(val url: String) : PayrollEffect()
     object RequestCalendarPermission : PayrollEffect()
+
+    // Sync Database effects
+    data class SyncDatabaseComplete(val result: SyncDatabaseResult) : PayrollEffect()
+
+    // Client added effects
+    data class ClientAdded(val clientName: String) : PayrollEffect()
+    data class ClientAddFailed(val clientName: String, val error: String) : PayrollEffect()
 }
 
 /**

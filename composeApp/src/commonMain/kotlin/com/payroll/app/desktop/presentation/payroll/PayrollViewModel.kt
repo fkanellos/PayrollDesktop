@@ -2,13 +2,19 @@ package com.payroll.app.desktop.presentation.payroll
 
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.base.RepositoryResult
+import com.payroll.app.desktop.core.export.ExportService
 import com.payroll.app.desktop.data.repositories.PayrollRepository
+import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.ClientPayrollDetail
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.domain.models.EmployeeInfo
 import com.payroll.app.desktop.domain.models.PayrollRequest
 import com.payroll.app.desktop.domain.models.PayrollResponse
 import com.payroll.app.desktop.domain.models.PayrollSummary
+import com.payroll.app.desktop.domain.models.UncertainMatch
+import com.payroll.app.desktop.domain.service.DatabaseSyncService
+import com.payroll.app.desktop.utils.DateRanges
+import io.ktor.http.ContentDisposition.Companion.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -21,9 +27,18 @@ import kotlinx.datetime.minus
 /**
  * PayrollViewModel implementing MVI pattern
  * Handles all payroll calculation logic and state management
+ * Enhanced με calendar support και improved UX
  */
+// Interface for MatchConfirmationRepository (to avoid platform-specific dependencies)
+interface IMatchConfirmationRepository {
+    suspend fun saveConfirmation(eventTitle: String, matchedClientName: String, employeeId: String)
+    suspend fun getConfirmedMatch(eventTitle: String, employeeId: String): String?
+}
+
 class PayrollViewModel(
     private val payrollRepository: PayrollRepository,
+    private val databaseSyncService: DatabaseSyncService,
+    private val matchConfirmationRepository: IMatchConfirmationRepository,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 ) : BaseViewModel<PayrollState, PayrollAction, PayrollEffect>() {
 
@@ -57,15 +72,21 @@ class PayrollViewModel(
                 currentState.copy(isLoading = true, error = null)
             }
 
-            // Employee Selection
+            // Employee Selection - Enhanced με validation
             is PayrollAction.SelectEmployee -> {
-                currentState.copy(
+                // Clear previous results when changing employee
+                val newState = currentState.copy(
                     selectedEmployee = action.employee,
-                    error = null
+                    error = null,
+                    payrollResult = null
                 )
+
+                // Validate employee and show info
+                validateSelectedEmployee(action.employee)
+                newState
             }
 
-            // Date Selection
+            // Date Selection - Enhanced με calendar picker support
             is PayrollAction.SetStartDate -> {
                 val newState = currentState.copy(startDate = action.date, error = null)
                 validateDateRange(newState)
@@ -76,6 +97,7 @@ class PayrollViewModel(
                 validateDateRange(newState)
             }
 
+            // Calendar Date Picker Actions - Enhanced
             is PayrollAction.ShowDatePicker -> {
                 currentState.copy(showDatePicker = true, datePickerType = action.type)
             }
@@ -84,26 +106,41 @@ class PayrollViewModel(
                 currentState.copy(showDatePicker = false)
             }
 
+            PayrollAction.ShowStartDatePicker -> {
+                currentState.copy(showStartDatePicker = true)
+            }
+
+            PayrollAction.ShowEndDatePicker -> {
+                currentState.copy(showEndDatePicker = true)
+            }
+
+            PayrollAction.HideStartDatePicker -> {
+                currentState.copy(showStartDatePicker = false)
+            }
+
+            PayrollAction.HideEndDatePicker -> {
+                currentState.copy(showEndDatePicker = false)
+            }
+
             PayrollAction.SetDefaultDateRange -> {
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                val twoWeeksAgo = now.date.minus(kotlinx.datetime.DatePeriod(days = 14))
-                val startDateTime = LocalDateTime(twoWeeksAgo, now.time)
+                val (startDateTime, endDateTime) = DateRanges.twoWorkWeeks()
 
                 currentState.copy(
                     startDate = startDateTime,
-                    endDate = now,
+                    endDate = endDateTime,
                     error = null
                 )
             }
 
-            // Payroll Calculation
+            // Payroll Calculation - Enhanced με better validation
             PayrollAction.CalculatePayroll -> {
                 if (canCalculatePayroll(currentState)) {
                     calculatePayroll(currentState)
                     currentState.copy(isCalculating = true, error = null)
                 } else {
-                    emitSideEffect(PayrollEffect.ShowError("Παρακαλώ συμπληρώστε όλα τα απαραίτητα πεδία"))
-                    currentState
+                    val errorMessage = getValidationErrorMessage(currentState)
+                    emitSideEffect(PayrollEffect.ShowError(errorMessage))
+                    currentState.copy(error = errorMessage)
                 }
             }
 
@@ -111,10 +148,11 @@ class PayrollViewModel(
                 currentState.copy(payrollResult = null)
             }
 
-            // Export Actions
+            // Export Actions - Enhanced με better feedback
             PayrollAction.ExportToPdf -> {
                 currentState.payrollResult?.let { result ->
                     exportToPdf(result)
+                    emitSideEffect(PayrollEffect.ShowToast("Δημιουργία PDF..."))
                 } ?: run {
                     emitSideEffect(PayrollEffect.ShowError("Δεν υπάρχουν αποτελέσματα για εξαγωγή"))
                 }
@@ -124,10 +162,51 @@ class PayrollViewModel(
             PayrollAction.ExportToExcel -> {
                 currentState.payrollResult?.let { result ->
                     exportToExcel(result)
+                    emitSideEffect(PayrollEffect.ShowToast("Δημιουργία Excel..."))
                 } ?: run {
                     emitSideEffect(PayrollEffect.ShowError("Δεν υπάρχουν αποτελέσματα για εξαγωγή"))
                 }
                 currentState
+            }
+
+            // Sync Database Actions
+            PayrollAction.SyncDatabase -> {
+                syncDatabase()
+                currentState.copy(isSyncing = true, syncResult = null, error = null)
+            }
+
+            PayrollAction.ClearSyncResult -> {
+                currentState.copy(syncResult = null)
+            }
+
+            // Add unmatched client to database
+            is PayrollAction.AddUnmatchedClient -> {
+                addUnmatchedClient(
+                    name = action.name,
+                    price = action.price,
+                    employeePrice = action.employeePrice,
+                    companyPrice = action.companyPrice,
+                    employeeId = currentState.selectedEmployee?.id
+                )
+                // Optimistically add to addedClients set
+                currentState.copy(
+                    addedClients = currentState.addedClients + action.name
+                )
+            }
+
+            // Match Confirmation Actions
+            is PayrollAction.ConfirmMatch -> {
+                confirmMatch(action.match, currentState.selectedEmployee?.id)
+                currentState
+            }
+
+            is PayrollAction.RejectMatch -> {
+                rejectMatch(action.match)
+                currentState
+            }
+
+            PayrollAction.ClearUncertainMatches -> {
+                currentState.copy(uncertainMatches = emptyList())
             }
 
             // Error Handling
@@ -137,12 +216,239 @@ class PayrollViewModel(
         }
     }
 
+    /**
+     * Confirm an uncertain match - save to database
+     */
+    private fun confirmMatch(match: UncertainMatch, employeeId: String?) {
+        if (employeeId == null) {
+            emitSideEffect(PayrollEffect.ShowError("No employee selected"))
+            return
+        }
+
+        val suggestedMatch = match.suggestedMatch ?: return
+
+        scope.launch {
+            try {
+                // Save confirmation to database
+                matchConfirmationRepository.saveConfirmation(
+                    eventTitle = match.eventTitle,
+                    matchedClientName = suggestedMatch.clientName,
+                    employeeId = employeeId
+                )
+
+                // Remove from uncertainMatches list
+                updateState { currentState ->
+                    currentState.copy(
+                        uncertainMatches = currentState.uncertainMatches - match
+                    )
+                }
+
+                emitSideEffect(
+                    PayrollEffect.ShowToast(
+                        "✅ Αποθηκεύτηκε: '${match.eventTitle}' → '${suggestedMatch.clientName}'"
+                    )
+                )
+
+                // If all matches are confirmed, recalculate payroll
+                if (uiState.value.uncertainMatches.isEmpty()) {
+                    emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επιβεβαιώθηκαν! Επαναυπολογισμός..."))
+                    delay(500)
+                    handleAction(PayrollAction.CalculatePayroll)
+                }
+            } catch (e: Exception) {
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα αποθήκευσης: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Reject an uncertain match - keep event as unmatched
+     * Save rejection to database so we don't ask again
+     */
+    private fun rejectMatch(match: UncertainMatch) {
+        val employeeId = uiState.value.selectedEmployee?.id
+        if (employeeId == null) {
+            emitSideEffect(PayrollEffect.ShowError("No employee selected"))
+            return
+        }
+
+        scope.launch {
+            try {
+                // Save rejection to database (with empty client name to indicate rejection)
+                matchConfirmationRepository.saveConfirmation(
+                    eventTitle = match.eventTitle,
+                    matchedClientName = "__REJECTED__",  // Special marker for rejections
+                    employeeId = employeeId
+                )
+
+                // Remove from uncertainMatches list
+                updateState { currentState ->
+                    currentState.copy(
+                        uncertainMatches = currentState.uncertainMatches - match
+                    )
+                }
+
+                emitSideEffect(
+                    PayrollEffect.ShowToast(
+                        "Απορρίφθηκε: '${match.eventTitle}'"
+                    )
+                )
+
+                // If all matches are processed, recalculate payroll
+                if (uiState.value.uncertainMatches.isEmpty()) {
+                    emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επεξεργάστηκαν! Επαναυπολογισμός..."))
+                    delay(500)
+                    handleAction(PayrollAction.CalculatePayroll)
+                }
+            } catch (e: Exception) {
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα αποθήκευσης rejection: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Add unmatched client to local database
+     */
+    private fun addUnmatchedClient(
+        name: String,
+        price: Double,
+        employeePrice: Double,
+        companyPrice: Double,
+        employeeId: String?
+    ) {
+        if (employeeId == null) {
+            emitSideEffect(PayrollEffect.ClientAddFailed(name, "No employee selected"))
+            return
+        }
+
+        scope.launch {
+            try {
+                // Create client via API (will be saved to backend and local DB)
+                val newClient = Client(
+                    id = 0,
+                    name = name,
+                    price = price,
+                    employeePrice = employeePrice,
+                    companyPrice = companyPrice,
+                    employeeId = employeeId,
+                    pendingPayment = false
+                )
+
+                when (val result = payrollRepository.createClient(newClient)) {
+                    is RepositoryResult.Success -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowToast(
+                                "✅ Client '$name' added! (€$price: Employee €$employeePrice / Company €$companyPrice)"
+                            )
+                        )
+                        emitSideEffect(PayrollEffect.ClientAdded(name))
+                    }
+                    is RepositoryResult.Error -> {
+                        // Remove from addedClients on failure
+                        updateState { currentState ->
+                            currentState.copy(
+                                addedClients = currentState.addedClients - name
+                            )
+                        }
+                        emitSideEffect(
+                            PayrollEffect.ShowError("Failed to add client: ${result.exception.message}")
+                        )
+                        emitSideEffect(PayrollEffect.ClientAddFailed(name, result.exception.message ?: "Unknown error"))
+                    }
+                }
+            } catch (e: Exception) {
+                // Remove from addedClients on failure
+                updateState { currentState ->
+                    currentState.copy(
+                        addedClients = currentState.addedClients - name
+                    )
+                }
+                emitSideEffect(PayrollEffect.ShowError("Error adding client: ${e.message}"))
+                emitSideEffect(PayrollEffect.ClientAddFailed(name, e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    /**
+     * Sync database from Google Sheets
+     */
+    private fun syncDatabase() {
+        scope.launch {
+            try {
+                emitSideEffect(PayrollEffect.ShowToast("🔄 Συγχρονισμός βάσης δεδομένων από Google Sheets..."))
+
+                val result = databaseSyncService.syncFromSheets()
+
+                result.onSuccess { response ->
+                    val syncResult = SyncDatabaseResult(
+                        success = true,
+                        employeesInserted = response.employeesInserted,
+                        employeesUpdated = response.employeesUpdated,
+                        clientsInserted = response.clientsInserted,
+                        clientsUpdated = response.clientsUpdated,
+                        durationMs = response.durationMs
+                    )
+
+                    updateState { currentState ->
+                        currentState.copy(
+                            isSyncing = false,
+                            syncResult = syncResult
+                        )
+                    }
+
+                    // Reload employees after sync
+                    loadEmployees()
+
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "✅ Συγχρονισμός ολοκληρώθηκε!\n" +
+                                    "Εργαζόμενοι: +${response.employeesInserted} / ↻${response.employeesUpdated}\n" +
+                                    "Πελάτες: +${response.clientsInserted} / ↻${response.clientsUpdated}"
+                        )
+                    )
+                    emitSideEffect(PayrollEffect.SyncDatabaseComplete(syncResult))
+                }.onFailure { error ->
+                    val syncResult = SyncDatabaseResult(
+                        success = false,
+                        errorMessage = error.message
+                    )
+
+                    updateState { currentState ->
+                        currentState.copy(
+                            isSyncing = false,
+                            syncResult = syncResult,
+                            error = "Σφάλμα συγχρονισμού: ${error.message}"
+                        )
+                    }
+
+                    emitSideEffect(
+                        PayrollEffect.ShowError("Σφάλμα συγχρονισμού: ${error.message}")
+                    )
+                }
+            } catch (e: Exception) {
+                val syncResult = SyncDatabaseResult(
+                    success = false,
+                    errorMessage = e.message
+                )
+
+                updateState { currentState ->
+                    currentState.copy(
+                        isSyncing = false,
+                        syncResult = syncResult,
+                        error = e.message ?: "Σφάλμα συγχρονισμού"
+                    )
+                }
+
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα συγχρονισμού: ${e.message}"))
+            }
+        }
+    }
+
     private fun loadEmployees() {
         scope.launch {
             try {
                 updateState { it.copy(isLoading = true, error = null) }
 
-                // Use real API instead of mock
                 when (val result = payrollRepository.getAllEmployees()) {
                     is RepositoryResult.Success -> {
                         updateState { currentState ->
@@ -152,6 +458,7 @@ class PayrollViewModel(
                                 error = null
                             )
                         }
+                        emitSideEffect(PayrollEffect.ShowToast("Φορτώθηκαν ${result.data.size} εργαζόμενοι"))
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
@@ -173,14 +480,71 @@ class PayrollViewModel(
         }
     }
 
+    private fun validateSelectedEmployee(employee: Employee) {
+        scope.launch {
+            try {
+                // Check for employee clients
+                when (val result = payrollRepository.getEmployeeClients(employee.id)) {
+                    is RepositoryResult.Success -> {
+                        val clientCount = result.data.size
+                        if (clientCount > 0) {
+                            emitSideEffect(
+                                PayrollEffect.ShowToast(
+                                    "Επιλέχθηκε ${employee.name} - ${clientCount} πελάτες"
+                                )
+                            )
+                        } else {
+                            emitSideEffect(
+                                PayrollEffect.ShowError(
+                                    "Ο εργαζόμενος ${employee.name} δεν έχει καταχωρημένους πελάτες"
+                                )
+                            )
+                        }
+                    }
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError(
+                                "Σφάλμα ελέγχου πελατών για ${employee.name}"
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα επικύρωσης εργαζομένου"))
+            }
+        }
+    }
+
     private fun validateDateRange(state: PayrollState): PayrollState {
         val startDate = state.startDate
         val endDate = state.endDate
 
-        return if (startDate != null && endDate != null && startDate >= endDate) {
-            state.copy(error = "Η ημερομηνία έναρξης πρέπει να είναι πριν τη λήξη")
-        } else {
-            state.copy(error = null)
+        return when {
+            startDate == null || endDate == null -> state
+            startDate >= endDate -> {
+                state.copy(error = "Η ημερομηνία έναρξης πρέπει να είναι πριν τη λήξη")
+            }
+            startDate > Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) -> {
+                state.copy(error = "Η ημερομηνία έναρξης δεν μπορεί να είναι στο μέλλον")
+            }
+            else -> {
+                val daysDifference = endDate.date.toEpochDays() - startDate.date.toEpochDays()
+                when {
+                    daysDifference > 365 -> {
+                        state.copy(error = "Το διάστημα δεν μπορεί να υπερβαίνει το 1 έτος")
+                    }
+                    daysDifference > 90 -> {
+                        // Show warning but allow calculation
+                        emitSideEffect(
+                            PayrollEffect.ShowToast(
+                                "⚠️ Μεγάλο χρονικό διάστημα - ο υπολογισμός ίσως αργήσει"
+                            )
+                        )
+                        state.copy(error = null)
+                    }
+                    else -> state.copy(error = null)
+                }
+            }
         }
     }
 
@@ -188,7 +552,19 @@ class PayrollViewModel(
         return state.selectedEmployee != null &&
                 state.startDate != null &&
                 state.endDate != null &&
-                state.error == null
+                state.error == null &&
+                !state.isCalculating
+    }
+
+    private fun getValidationErrorMessage(state: PayrollState): String {
+        return when {
+            state.selectedEmployee == null -> "Παρακαλώ επιλέξτε εργαζόμενο"
+            state.startDate == null -> "Παρακαλώ επιλέξτε ημερομηνία έναρξης"
+            state.endDate == null -> "Παρακαλώ επιλέξτε ημερομηνία λήξης"
+            state.error != null -> state.error
+            state.isCalculating -> "Υπολογισμός ήδη σε εξέλιξη"
+            else -> "Παρακαλώ συμπληρώστε όλα τα απαραίτητα πεδία"
+        }
     }
 
     private fun calculatePayroll(state: PayrollState) {
@@ -198,8 +574,7 @@ class PayrollViewModel(
 
         scope.launch {
             try {
-                // TODO: Replace with actual API call
-                delay(2000) // Simulate API call
+                emitSideEffect(PayrollEffect.ShowToast("Έναρξη υπολογισμού μισθοδοσίας..."))
 
                 val request = PayrollRequest(
                     employeeId = employee.id,
@@ -207,17 +582,73 @@ class PayrollViewModel(
                     endDate = endDate.toString()
                 )
 
-                // Mock response - replace with actual API call
-                val mockResult = createMockPayrollResponse(employee, startDate, endDate)
+                when (val result = payrollRepository.calculatePayroll(request)) {
+                    is RepositoryResult.Success -> {
+                        // Check if there are uncertain matches
+                        val allUncertainMatches = result.data.eventTracking?.uncertainMatches ?: emptyList()
 
-                updateState { currentState ->
-                    currentState.copy(
-                        payrollResult = mockResult,
-                        isCalculating = false
-                    )
+                        println("🔍 DEBUG: Found ${allUncertainMatches.size} uncertain matches")
+                        allUncertainMatches.forEach { match ->
+                            println("  - ${match.eventTitle} → ${match.suggestedMatch?.clientName} (${match.suggestedMatch?.confidence})")
+                        }
+
+                        // Filter out matches that have already been confirmed OR rejected
+                        val uncertainMatches = allUncertainMatches.filter { match ->
+                            val confirmed = matchConfirmationRepository.getConfirmedMatch(
+                                eventTitle = match.eventTitle,
+                                employeeId = employee.id
+                            )
+                            val isFiltered = confirmed != null
+                            if (isFiltered) {
+                                val action = if (confirmed == "__REJECTED__") "rejected" else "confirmed as '$confirmed'"
+                                println("  ✅ Filtered out '${match.eventTitle}' (already $action)")
+                            }
+                            confirmed == null  // Only keep if NOT confirmed/rejected yet
+                        }
+
+                        println("📋 After filtering: ${uncertainMatches.size} uncertain matches remaining")
+
+                        if (uncertainMatches.isNotEmpty()) {
+                            // Show confirmation dialog for uncertain matches
+                            updateState { currentState ->
+                                currentState.copy(
+                                    uncertainMatches = uncertainMatches,
+                                    payrollResult = result.data,
+                                    isCalculating = false
+                                )
+                            }
+                            emitSideEffect(
+                                PayrollEffect.ShowToast(
+                                    "⚠️ Βρέθηκαν ${uncertainMatches.size} αβέβαιες αντιστοιχίες που χρειάζονται επιβεβαίωση"
+                                )
+                            )
+                        } else {
+                            updateState { currentState ->
+                                currentState.copy(
+                                    payrollResult = result.data,
+                                    isCalculating = false,
+                                    uncertainMatches = emptyList()
+                                )
+                            }
+
+                            val summary = result.data.summary
+                            emitSideEffect(
+                                PayrollEffect.ShowToast(
+                                    "✅ Υπολογισμός ολοκληρώθηκε! ${summary.totalSessions} συνεδρίες, ${summary.totalRevenue.toString()}€"
+                                )
+                            )
+                        }
+                    }
+                    is RepositoryResult.Error -> {
+                        updateState { currentState ->
+                            currentState.copy(
+                                isCalculating = false,
+                                error = "Σφάλμα υπολογισμού: ${result.exception.message}"
+                            )
+                        }
+                        emitSideEffect(PayrollEffect.ShowError("Σφάλμα υπολογισμού: ${result.exception.message}"))
+                    }
                 }
-
-                emitSideEffect(PayrollEffect.ShowToast("Υπολογισμός μισθοδοσίας ολοκληρώθηκε επιτυχώς"))
 
             } catch (e: Exception) {
                 updateState { currentState ->
@@ -232,27 +663,180 @@ class PayrollViewModel(
     }
 
     private fun exportToPdf(result: PayrollResponse) {
+        // TODO: Backend removed - implement local PDF export if needed
+        emitSideEffect(PayrollEffect.ShowError("PDF export not yet implemented for local mode"))
+        /* LEGACY BACKEND CODE - COMMENTED OUT
         scope.launch {
             try {
-                // TODO: Implement actual PDF generation
-                val filename = "payroll_${result.employee.name}_${Clock.System.now()}.pdf"
-                emitSideEffect(PayrollEffect.ShowToast("Εξαγωγή PDF: $filename"))
+                emitSideEffect(PayrollEffect.ShowToast("Δημιουργία PDF από backend..."))
+
+                // Check if we have payroll ID
+                val payrollId = result.id
+                if (payrollId == null) {
+                    emitSideEffect(PayrollEffect.ShowError("Δεν βρέθηκε ID payroll"))
+                    return@launch
+                }
+
+                // Download PDF bytes from backend
+                when (val pdfResult = payrollRepository.downloadPdf(payrollId)) {
+                    is RepositoryResult.Success<*> -> {
+                        // Generate filename
+                        val timestamp = Clock.System.now().epochSeconds
+                        val employeeName = result.employee.name.replace(" ", "_")
+                        val filename = "Payroll_${employeeName}_${timestamp}.pdf"
+
+                        // Save to device using platform-specific service
+                        val exportService = ExportService()
+                        when (val saveResult = exportService.savePdfBytes(pdfResult.data, filename)) {
+                            is com.payroll.app.desktop.core.export.ExportResult.Success -> {
+                                emitSideEffect(
+                                    PayrollEffect.ShowToast(
+                                        "PDF δημιουργήθηκε!\nΣώθηκε: ${saveResult.filePath}"
+                                    )
+                                )
+                            }
+                            is com.payroll.app.desktop.core.export.ExportResult.Error -> {
+                                emitSideEffect(PayrollEffect.ShowError(saveResult.message))
+                            }
+                        }
+                    }
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError("Σφάλμα λήψης PDF: ${pdfResult.exception.message}")
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής PDF: ${e.message}"))
             }
         }
+        */
     }
 
     private fun exportToExcel(result: PayrollResponse) {
+        // TODO: Backend removed - implement local Excel export if needed
+        emitSideEffect(PayrollEffect.ShowError("Excel export not yet implemented for local mode"))
+        /* LEGACY BACKEND CODE - COMMENTED OUT
         scope.launch {
             try {
-                // TODO: Implement actual Excel generation
-                val filename = "payroll_${result.employee.name}_${Clock.System.now()}.xlsx"
-                emitSideEffect(PayrollEffect.ShowToast("Εξαγωγή Excel: $filename"))
+                // Check if we have payroll ID
+                val payrollId = result.id
+                if (payrollId == null) {
+                    emitSideEffect(PayrollEffect.ShowError("Δεν βρέθηκε ID payroll"))
+                    return@launch
+                }
+
+                emitSideEffect(PayrollEffect.ShowToast("🔍 Έλεγχος Google Sheets..."))
+
+                // 1. Check if exists in Sheets
+                when (val checkResult = payrollRepository.checkPayrollInSheets(payrollId)) {
+                    is RepositoryResult.Success -> {
+                        val response = checkResult.data
+
+                        println("📊 Sheets check result:")
+                        println("   Exists: ${response.exists}")
+                        println("   Action: ${response.action}")
+                        println("   Message: ${response.message}")
+
+                        // 2. Emit effect to show confirmation dialog
+                        val confirmMessage = if (response.exists) {
+                            "⚠️ Υπάρχει ήδη payroll για:\n" +
+                                    "Εργαζόμενος: ${response.employeeName}\n" +
+                                    "Περίοδος: ${response.period}\n\n" +
+                                    "Θα ενημερωθούν τα υπάρχοντα δεδομένα. Συνέχεια;"
+                        } else {
+                            "✅ Νέο payroll για:\n" +
+                                    "Εργαζόμενος: ${response.employeeName}\n" +
+                                    "Περίοδος: ${response.period}\n\n" +
+                                    "Θα προστεθεί στο Google Sheets. Συνέχεια;"
+                        }
+
+                        // Emit confirmation request
+                        emitSideEffect(
+                            PayrollEffect.RequestSheetsConfirmation(
+                                payrollId = payrollId,
+                                message = confirmMessage,
+                                isUpdate = response.exists
+                            )
+                        )
+                    }
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError(
+                                "Σφάλμα ελέγχου Sheets: ${checkResult.exception.message}"
+                            )
+                        )
+                    }
+                }
+
             } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής Excel: ${e.message}"))
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα: ${e.message}"))
             }
         }
+        */
+    }
+
+    /**
+     * 🆕 NEW: Confirm and execute Sheets sync
+     * LEGACY BACKEND CODE - COMMENTED OUT
+     */
+    fun confirmAndSyncToSheets(payrollId: String) {
+        // TODO: Backend removed - not needed for local mode
+        emitSideEffect(PayrollEffect.ShowError("Sheets sync not yet implemented for local mode"))
+        /* LEGACY BACKEND CODE - COMMENTED OUT
+        scope.launch {
+            try {
+                emitSideEffect(PayrollEffect.ShowToast("📤 Αποστολή στο Google Sheets..."))
+
+                when (val syncResult = payrollRepository.syncPayrollToSheets(payrollId)) {
+                    is RepositoryResult.Success -> {
+                        val response = syncResult.data
+
+                        if (response.status == "success") {
+                            val actionText = if (response.mode == "updated") "ενημερώθηκε" else "προστέθηκε"
+                            val masterWritten = response.masterWritten ?: false
+                            val detailsWritten = response.detailsWritten ?: false
+                            val detailRows = response.detailRows ?: 0
+
+                            if (masterWritten && detailsWritten) {
+                                emitSideEffect(
+                                    PayrollEffect.ShowToast(
+                                        "✅ Το payroll $actionText στο Google Sheets!\n" +
+                                                "📊 ${detailRows} client details"
+                                    )
+                                )
+                            } else {
+                                emitSideEffect(
+                                    PayrollEffect.ShowError(
+                                        "Μερική αποτυχία sync:\n" +
+                                                "Master: ${if (masterWritten) "✅" else "❌"}\n" +
+                                                "Details: ${if (detailsWritten) "✅" else "❌"}"
+                                    )
+                                )
+                            }
+                        } else {
+                            // Error από backend
+                            emitSideEffect(
+                                PayrollEffect.ShowError(
+                                    "Σφάλμα sync: ${response.message ?: "Unknown error"}"
+                                )
+                            )
+                        }
+                    }
+                    is RepositoryResult.Error -> {
+                        emitSideEffect(
+                            PayrollEffect.ShowError(
+                                "Σφάλμα sync: ${syncResult.exception.message}"
+                            )
+                        )
+                    }
+                }
+
+            } catch (e: Exception) {
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα sync: ${e.message}"))
+            }
+        }
+        */
     }
 
     private fun emitSideEffect(effect: PayrollEffect) {
@@ -261,8 +845,7 @@ class PayrollViewModel(
         }
     }
 
-
-    // Mock data for testing
+    // Enhanced mock data with more realistic client breakdown
     private fun createMockPayrollResponse(employee: Employee, startDate: LocalDateTime, endDate: LocalDateTime) =
         PayrollResponse(
             employee = EmployeeInfo(
@@ -287,14 +870,33 @@ class PayrollViewModel(
                     totalRevenue = 200.0,
                     employeeEarnings = 80.0,
                     companyEarnings = 120.0
+                ),
+                ClientPayrollDetail(
+                    clientName = "Μαρία Κουτίβα",
+                    pricePerSession = 50.0,
+                    employeePricePerSession = 20.0,
+                    companyPricePerSession = 30.0,
+                    sessions = 6,
+                    totalRevenue = 300.0,
+                    employeeEarnings = 120.0,
+                    companyEarnings = 180.0
+                ),
+                ClientPayrollDetail(
+                    clientName = "Γιώργος Παπαγιαννέρης",
+                    pricePerSession = 50.0,
+                    employeePricePerSession = 20.0,
+                    companyPricePerSession = 30.0,
+                    sessions = 3,
+                    totalRevenue = 150.0,
+                    employeeEarnings = 60.0,
+                    companyEarnings = 90.0
                 )
             ),
             generatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 .toString()
         )
 
-    override fun onCleared() {
+    fun onCleared() {
         scope.cancel()
-        super.onCleared()
     }
 }

@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -55,6 +56,7 @@ kotlin {
 
             // Koin DI
             implementation("io.insert-koin:koin-core:3.4.3")
+            implementation("io.insert-koin:koin-compose:1.0.4")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -63,6 +65,20 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation("io.ktor:ktor-client-cio:2.3.4")
+
+            // SQLDelight
+            implementation(libs.sqldelight.driver)
+            implementation(libs.sqldelight.coroutines)
+
+            // Google APIs
+            implementation(libs.google.api.client)
+            implementation(libs.google.oauth.client.jetty)
+            implementation(libs.google.calendar)
+            implementation(libs.google.sheets)
+            implementation(libs.google.drive)
+
+            // KSafe - Encrypted credential storage
+            implementation("eu.anifantakis:ksafe:1.3.0")
         }
     }
 }
@@ -106,6 +122,16 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.payroll.app.desktop"
             packageVersion = "1.0.0"
+        }
+    }
+}
+
+// SQLDelight configuration
+sqldelight {
+    databases {
+        create("PayrollDatabase") {
+            packageName.set("com.payroll.app.desktop.database")
+            srcDirs.setFrom("src/commonMain/sqldelight")
         }
     }
 }

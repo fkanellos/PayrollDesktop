@@ -17,3 +17,9 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Google API credentials (sensitive)
+**/credentials.json
+**/tokens/
+.claude/
+project-structure.txt
