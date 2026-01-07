@@ -1,0 +1,33 @@
+-- Migration 2: Add UNIQUE constraint on (employee_id, name) to ClientEntity
+-- SQLite doesn't support ALTER TABLE ADD CONSTRAINT, so we need to recreate the table
+
+-- Step 1: Drop existing index (will be recreated after table recreation)
+DROP INDEX IF EXISTS idx_client_employee_id;
+
+-- Step 2: Create new table with UNIQUE constraint
+CREATE TABLE ClientEntity_new (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL NOT NULL DEFAULT 0.0,
+    employee_price REAL NOT NULL DEFAULT 0.0,
+    company_price REAL NOT NULL DEFAULT 0.0,
+    employee_id TEXT NOT NULL,
+    pending_payment INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (employee_id) REFERENCES EmployeeEntity(id) ON DELETE CASCADE,
+    UNIQUE(employee_id, name)
+);
+
+-- Step 3: Copy data from old table to new table
+-- Using INSERT OR IGNORE to skip any duplicate (employee_id, name) combinations
+INSERT OR IGNORE INTO ClientEntity_new (id, name, price, employee_price, company_price, employee_id, pending_payment)
+SELECT id, name, price, employee_price, company_price, employee_id, pending_payment
+FROM ClientEntity;
+
+-- Step 4: Drop old table
+DROP TABLE ClientEntity;
+
+-- Step 5: Rename new table to original name
+ALTER TABLE ClientEntity_new RENAME TO ClientEntity;
+
+-- Step 6: Recreate index on employee_id for faster lookups
+CREATE INDEX idx_client_employee_id ON ClientEntity(employee_id);

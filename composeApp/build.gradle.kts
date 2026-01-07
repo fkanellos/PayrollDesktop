@@ -131,6 +131,10 @@ sqldelight {
         create("PayrollDatabase") {
             packageName.set("com.payroll.app.desktop.database")
             srcDirs.setFrom("src/commonMain/sqldelight")
+            // Enable schema verification and migration support
+            schemaOutputDirectory.set(file("src/commonMain/sqldelight/databases"))
+            // Verify migrations on build
+            verifyMigrations.set(true)
         }
     }
 }
