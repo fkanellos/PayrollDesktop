@@ -14,6 +14,7 @@ import com.google.api.services.calendar.CalendarScopes
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
+import com.payroll.app.desktop.core.logging.Logger
 import java.io.File
 import java.io.InputStreamReader
 
@@ -42,6 +43,7 @@ import java.io.InputStreamReader
 class GoogleCredentialProvider {
 
     companion object {
+        private const val TAG = "GoogleCredentialProvider"
         private const val APPLICATION_NAME = "Payroll Desktop App"
         private val JSON_FACTORY = GsonFactory.getDefaultInstance()
 
@@ -63,8 +65,8 @@ class GoogleCredentialProvider {
         try {
             credential = loadCredential()
         } catch (e: Exception) {
-            println("Failed to load credentials: ${e.message}")
-            println("Please run the setup to import Google OAuth credentials")
+            Logger.error(TAG, "Failed to load credentials", e)
+            Logger.warning(TAG, "Please run the setup to import Google OAuth credentials")
         }
     }
 
@@ -110,12 +112,12 @@ class GoogleCredentialProvider {
         // Try to load existing credential
         val existingCredential = flow.loadCredential("user")
         if (existingCredential != null && existingCredential.accessToken != null) {
-            println("Loaded existing credentials")
+            Logger.info(TAG, "Loaded existing credentials")
             return existingCredential
         }
 
         // No credential found, need to authorize
-        println("No credentials found. Browser will open for authorization...")
+        Logger.info(TAG, "No credentials found. Browser will open for authorization...")
         val receiver = LocalServerReceiver.Builder()
             .setPort(8889)
             .build()
@@ -132,12 +134,12 @@ class GoogleCredentialProvider {
         // Auto-refresh if token is expired or about to expire
         try {
             if (cred.expiresInSeconds != null && cred.expiresInSeconds <= 300) {
-                println("⏰ Access token expiring soon, refreshing...")
+                Logger.info(TAG, "Access token expiring soon, refreshing...")
                 cred.refreshToken()
-                println("✅ Token refreshed successfully")
+                Logger.info(TAG, "Token refreshed successfully")
             }
         } catch (e: Exception) {
-            println("⚠️ Token refresh failed: ${e.message}")
+            Logger.warning(TAG, "Token refresh failed: ${e.message}")
         }
 
         return Calendar.Builder(httpTransport, JSON_FACTORY, cred)
@@ -154,12 +156,12 @@ class GoogleCredentialProvider {
         // Auto-refresh if token is expired or about to expire
         try {
             if (cred.expiresInSeconds != null && cred.expiresInSeconds <= 300) {
-                println("⏰ Access token expiring soon, refreshing...")
+                Logger.info(TAG, "Access token expiring soon, refreshing...")
                 cred.refreshToken()
-                println("✅ Token refreshed successfully")
+                Logger.info(TAG, "Token refreshed successfully")
             }
         } catch (e: Exception) {
-            println("⚠️ Token refresh failed: ${e.message}")
+            Logger.warning(TAG, "Token refresh failed: ${e.message}")
         }
 
         return Sheets.Builder(httpTransport, JSON_FACTORY, cred)
@@ -180,7 +182,7 @@ class GoogleCredentialProvider {
             credential = loadCredential()
             true
         } catch (e: Exception) {
-            println("Authentication failed: ${e.message}")
+            Logger.error(TAG, "Authentication failed: ${e.message}")
             false
         }
     }
@@ -191,7 +193,7 @@ class GoogleCredentialProvider {
     fun deleteCredentials() {
         TOKENS_DIR.listFiles()?.forEach { it.delete() }
         credential = null
-        println("Credentials deleted. Re-authorization required.")
+        Logger.info(TAG, "Credentials deleted. Re-authorization required.")
     }
 
     /**

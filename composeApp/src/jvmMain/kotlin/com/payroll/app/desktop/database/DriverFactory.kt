@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.database
 
+import com.payroll.app.desktop.core.logging.Logger
+
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import java.io.File
@@ -9,6 +11,7 @@ import java.io.File
  */
 object DriverFactory {
 
+    private const val TAG = "DriverFactory"
     private const val DATABASE_NAME = "payroll.db"
     private const val APP_FOLDER = ".payroll-app"
 
@@ -29,7 +32,7 @@ object DriverFactory {
 
         // Create tables if they don't exist
         if (isNewDatabase) {
-            println("Creating new database at: ${dbFile.absolutePath}")
+            Logger.info(TAG, "Creating new database at: ${dbFile.absolutePath}")
             PayrollDatabase.Schema.create(driver)
         }
 

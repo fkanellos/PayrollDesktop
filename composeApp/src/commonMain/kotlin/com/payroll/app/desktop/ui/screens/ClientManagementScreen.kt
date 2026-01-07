@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.ui.screens
 
+import com.payroll.app.desktop.core.logging.Logger
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,10 +49,10 @@ fun ClientManagementScreen(
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 is ClientManagementEffect.ShowToast -> {
-                    println("Toast: ${effect.message}")
+                    Logger.debug("UI", "Toast: ${effect.message}")
                 }
                 is ClientManagementEffect.ShowError -> {
-                    println("Error: ${effect.error}")
+                    Logger.debug("UI", "Error: ${effect.error}")
                 }
                 else -> { /* Handle other effects */ }
             }

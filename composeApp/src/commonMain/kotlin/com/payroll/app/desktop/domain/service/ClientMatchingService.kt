@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.domain.service
 
+import com.payroll.app.desktop.core.logging.Logger
+
 import com.payroll.app.desktop.core.utils.StringNormalizer
 import com.payroll.app.desktop.domain.models.ClientMatchResult
 import com.payroll.app.desktop.domain.models.MatchConfidence
@@ -38,7 +40,7 @@ class ClientMatchingService {
         val titleNormalized = StringNormalizer.normalize(title)
         val matches = mutableListOf<ClientMatchResult>()
 
-        println("🔍 MATCHING: '$title' → normalized: '$titleNormalized'")
+        Logger.debug("ClientMatchingService", "MATCHING: '$title' → normalized: '$titleNormalized'")
 
         // Strategy 1: Special keywords (EXACT match)
         for (keyword in specialKeywords) {

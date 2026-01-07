@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.google
 
+import com.payroll.app.desktop.core.logging.Logger
+
 import com.google.api.client.util.DateTime
 import com.google.api.services.calendar.Calendar
 import com.payroll.app.desktop.data.repositories.CalendarRepository
@@ -20,13 +22,17 @@ class GoogleCalendarRepository(
     private val credentialProvider: GoogleCredentialProvider
 ) : CalendarRepository {
 
+    companion object {
+        private const val TAG = "GoogleCalendarRepository"
+    }
+
     private var calendarService: Calendar? = null
 
     init {
         try {
             calendarService = credentialProvider.getCalendarService()
         } catch (e: Exception) {
-            println("Failed to initialize Google Calendar: ${e.message}")
+            Logger.error(TAG, "Failed to initialize Google Calendar", e)
         }
     }
 
@@ -119,14 +125,13 @@ class GoogleCalendarRepository(
                         attendees = event.attendees?.mapNotNull { it.email } ?: emptyList()
                     )
                 } catch (e: Exception) {
-                    println("Error parsing event: ${e.message}")
+                    Logger.warning(TAG, "Error parsing event: ${e.message}")
                     null
                 }
             } ?: emptyList()
 
         } catch (e: Exception) {
-            println("Error fetching calendar events: ${e.message}")
-            e.printStackTrace()
+            Logger.error(TAG, "Error fetching calendar events: ${e.message}")
             emptyList()
         }
     }
@@ -144,7 +149,7 @@ class GoogleCalendarRepository(
                 )
             } ?: emptyList()
         } catch (e: Exception) {
-            println("Error fetching calendar list: ${e.message}")
+            Logger.error(TAG, "Error fetching calendar list: ${e.message}")
             emptyList()
         }
     }

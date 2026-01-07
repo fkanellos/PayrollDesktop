@@ -2,6 +2,8 @@
 
 package com.payroll.app.desktop.ui.screens
 
+import com.payroll.app.desktop.core.logging.Logger
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -70,11 +72,11 @@ fun PayrollScreen(
             when (effect) {
                 is PayrollEffect.ShowToast -> {
                     // TODO: Show toast/snackbar
-                    println("Toast: ${effect.message}")
+                    Logger.debug("UI", "Toast: ${effect.message}")
                 }
                 is PayrollEffect.ShowError -> {
                     // TODO: Show error dialog
-                    println("Error: ${effect.error}")
+                    Logger.debug("UI", "Error: ${effect.error}")
                 }
                 // 🆕 Handle confirmation request
                 is PayrollEffect.RequestSheetsConfirmation -> {

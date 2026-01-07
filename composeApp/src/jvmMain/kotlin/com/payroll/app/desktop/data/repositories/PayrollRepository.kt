@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.data.repositories
 
+import com.payroll.app.desktop.core.logging.Logger
+
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.domain.models.*
 import com.payroll.app.desktop.domain.service.PayrollCalculationService
@@ -155,7 +157,7 @@ actual class EmployeeRepository(
             if (employee.sheetName.isNotBlank()) {
                 val sheetCreated = googleSheetsService.createEmployeeSheet(employee.sheetName)
                 if (!sheetCreated) {
-                    println("⚠️ Warning: Failed to create sheet tab for employee ${employee.name}")
+                    Logger.warning("PayrollRepository", "Failed to create sheet tab for employee ${employee.name}")
                     // Don't fail the operation, just log warning
                 }
             }
