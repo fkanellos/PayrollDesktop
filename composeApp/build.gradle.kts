@@ -135,3 +135,12 @@ sqldelight {
         }
     }
 }
+
+// Task to setup credentials
+tasks.register<JavaExec>("setupCredentials") {
+    group = "application"
+    description = "Import Google OAuth credentials from credentials.json"
+    mainClass.set("com.payroll.app.desktop.SetupCredentialsKt")
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    workingDir = project.projectDir.parentFile
+}

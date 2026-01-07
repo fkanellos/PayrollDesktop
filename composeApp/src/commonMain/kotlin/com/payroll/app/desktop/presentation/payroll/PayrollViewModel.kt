@@ -68,7 +68,8 @@ class PayrollViewModel(
             }
 
             PayrollAction.RefreshData -> {
-                loadEmployees()
+                println("🔄 DEBUG: PayrollAction.RefreshData received")
+                refreshData()
                 currentState.copy(isLoading = true, error = null)
             }
 
@@ -895,6 +896,39 @@ class PayrollViewModel(
             generatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 .toString()
         )
+
+    /**
+     * Refresh data - reload employees and retry failed operations
+     */
+    private fun refreshData() {
+        println("🔄 DEBUG: refreshData() called")
+        scope.launch {
+            try {
+                println("🔄 DEBUG: Starting refresh process")
+                emitSideEffect(PayrollEffect.ShowToast("🔄 Ανανέωση δεδομένων..."))
+
+                // Reload employees from database
+                println("🔄 DEBUG: Loading employees...")
+                loadEmployees()
+
+                // If there was an error in calculation, retry
+                val currentState = uiState.value
+                if (currentState.error != null && currentState.selectedEmployee != null) {
+                    delay(500) // Small delay after loading employees
+
+                    // Retry payroll calculation if it failed
+                    if (currentState.startDate != null && currentState.endDate != null) {
+                        emitSideEffect(PayrollEffect.ShowToast("🔄 Επανάληψη υπολογισμού..."))
+                        handleAction(PayrollAction.CalculatePayroll)
+                    }
+                }
+
+                emitSideEffect(PayrollEffect.ShowToast("✅ Ανανέωση ολοκληρώθηκε"))
+            } catch (e: Exception) {
+                emitSideEffect(PayrollEffect.ShowError("Σφάλμα ανανέωσης: ${e.message}"))
+            }
+        }
+    }
 
     fun onCleared() {
         scope.cancel()

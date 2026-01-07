@@ -5,6 +5,7 @@ import androidx.compose.ui.window.application
 import com.payroll.app.desktop.core.di.commonModule
 import com.payroll.app.desktop.core.di.viewModelModule
 import com.payroll.app.desktop.di.localModule
+import com.payroll.app.desktop.google.GoogleCredentialProvider
 import org.koin.core.context.startKoin
 import java.io.File
 import java.io.RandomAccessFile
