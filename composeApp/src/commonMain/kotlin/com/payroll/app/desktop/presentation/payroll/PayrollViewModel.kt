@@ -3,6 +3,7 @@ package com.payroll.app.desktop.presentation.payroll
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.export.ExportService
+import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.ClientPayrollDetail
@@ -14,7 +15,6 @@ import com.payroll.app.desktop.domain.models.PayrollSummary
 import com.payroll.app.desktop.domain.models.UncertainMatch
 import com.payroll.app.desktop.domain.service.DatabaseSyncService
 import com.payroll.app.desktop.utils.DateRanges
-import io.ktor.http.ContentDisposition.Companion.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -68,7 +68,7 @@ class PayrollViewModel(
             }
 
             PayrollAction.RefreshData -> {
-                println("🔄 DEBUG: PayrollAction.RefreshData received")
+                Logger.debug("PayrollViewModel", "PayrollAction.RefreshData received")
                 refreshData()
                 currentState.copy(isLoading = true, error = null)
             }
@@ -588,9 +588,9 @@ class PayrollViewModel(
                         // Check if there are uncertain matches
                         val allUncertainMatches = result.data.eventTracking?.uncertainMatches ?: emptyList()
 
-                        println("🔍 DEBUG: Found ${allUncertainMatches.size} uncertain matches")
+                        Logger.debug("PayrollViewModel", "Found ${allUncertainMatches.size} uncertain matches")
                         allUncertainMatches.forEach { match ->
-                            println("  - ${match.eventTitle} → ${match.suggestedMatch?.clientName} (${match.suggestedMatch?.confidence})")
+                            Logger.debug("PayrollViewModel", "  - ${match.eventTitle} → ${match.suggestedMatch?.clientName} (${match.suggestedMatch?.confidence})")
                         }
 
                         // Filter out matches that have already been confirmed OR rejected
@@ -602,12 +602,12 @@ class PayrollViewModel(
                             val isFiltered = confirmed != null
                             if (isFiltered) {
                                 val action = if (confirmed == "__REJECTED__") "rejected" else "confirmed as '$confirmed'"
-                                println("  ✅ Filtered out '${match.eventTitle}' (already $action)")
+                                Logger.debug("PayrollViewModel", "Filtered out '${match.eventTitle}' (already $action)")
                             }
                             confirmed == null  // Only keep if NOT confirmed/rejected yet
                         }
 
-                        println("📋 After filtering: ${uncertainMatches.size} uncertain matches remaining")
+                        Logger.debug("PayrollViewModel", "After filtering: ${uncertainMatches.size} uncertain matches remaining")
 
                         if (uncertainMatches.isNotEmpty()) {
                             // Show confirmation dialog for uncertain matches
@@ -664,180 +664,18 @@ class PayrollViewModel(
     }
 
     private fun exportToPdf(result: PayrollResponse) {
-        // TODO: Backend removed - implement local PDF export if needed
+        // TODO: Implement local PDF export
         emitSideEffect(PayrollEffect.ShowError("PDF export not yet implemented for local mode"))
-        /* LEGACY BACKEND CODE - COMMENTED OUT
-        scope.launch {
-            try {
-                emitSideEffect(PayrollEffect.ShowToast("Δημιουργία PDF από backend..."))
-
-                // Check if we have payroll ID
-                val payrollId = result.id
-                if (payrollId == null) {
-                    emitSideEffect(PayrollEffect.ShowError("Δεν βρέθηκε ID payroll"))
-                    return@launch
-                }
-
-                // Download PDF bytes from backend
-                when (val pdfResult = payrollRepository.downloadPdf(payrollId)) {
-                    is RepositoryResult.Success<*> -> {
-                        // Generate filename
-                        val timestamp = Clock.System.now().epochSeconds
-                        val employeeName = result.employee.name.replace(" ", "_")
-                        val filename = "Payroll_${employeeName}_${timestamp}.pdf"
-
-                        // Save to device using platform-specific service
-                        val exportService = ExportService()
-                        when (val saveResult = exportService.savePdfBytes(pdfResult.data, filename)) {
-                            is com.payroll.app.desktop.core.export.ExportResult.Success -> {
-                                emitSideEffect(
-                                    PayrollEffect.ShowToast(
-                                        "PDF δημιουργήθηκε!\nΣώθηκε: ${saveResult.filePath}"
-                                    )
-                                )
-                            }
-                            is com.payroll.app.desktop.core.export.ExportResult.Error -> {
-                                emitSideEffect(PayrollEffect.ShowError(saveResult.message))
-                            }
-                        }
-                    }
-                    is RepositoryResult.Error -> {
-                        emitSideEffect(
-                            PayrollEffect.ShowError("Σφάλμα λήψης PDF: ${pdfResult.exception.message}")
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής PDF: ${e.message}"))
-            }
-        }
-        */
     }
 
     private fun exportToExcel(result: PayrollResponse) {
-        // TODO: Backend removed - implement local Excel export if needed
+        // TODO: Implement local Excel export
         emitSideEffect(PayrollEffect.ShowError("Excel export not yet implemented for local mode"))
-        /* LEGACY BACKEND CODE - COMMENTED OUT
-        scope.launch {
-            try {
-                // Check if we have payroll ID
-                val payrollId = result.id
-                if (payrollId == null) {
-                    emitSideEffect(PayrollEffect.ShowError("Δεν βρέθηκε ID payroll"))
-                    return@launch
-                }
-
-                emitSideEffect(PayrollEffect.ShowToast("🔍 Έλεγχος Google Sheets..."))
-
-                // 1. Check if exists in Sheets
-                when (val checkResult = payrollRepository.checkPayrollInSheets(payrollId)) {
-                    is RepositoryResult.Success -> {
-                        val response = checkResult.data
-
-                        println("📊 Sheets check result:")
-                        println("   Exists: ${response.exists}")
-                        println("   Action: ${response.action}")
-                        println("   Message: ${response.message}")
-
-                        // 2. Emit effect to show confirmation dialog
-                        val confirmMessage = if (response.exists) {
-                            "⚠️ Υπάρχει ήδη payroll για:\n" +
-                                    "Εργαζόμενος: ${response.employeeName}\n" +
-                                    "Περίοδος: ${response.period}\n\n" +
-                                    "Θα ενημερωθούν τα υπάρχοντα δεδομένα. Συνέχεια;"
-                        } else {
-                            "✅ Νέο payroll για:\n" +
-                                    "Εργαζόμενος: ${response.employeeName}\n" +
-                                    "Περίοδος: ${response.period}\n\n" +
-                                    "Θα προστεθεί στο Google Sheets. Συνέχεια;"
-                        }
-
-                        // Emit confirmation request
-                        emitSideEffect(
-                            PayrollEffect.RequestSheetsConfirmation(
-                                payrollId = payrollId,
-                                message = confirmMessage,
-                                isUpdate = response.exists
-                            )
-                        )
-                    }
-                    is RepositoryResult.Error -> {
-                        emitSideEffect(
-                            PayrollEffect.ShowError(
-                                "Σφάλμα ελέγχου Sheets: ${checkResult.exception.message}"
-                            )
-                        )
-                    }
-                }
-
-            } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα: ${e.message}"))
-            }
-        }
-        */
     }
 
-    /**
-     * 🆕 NEW: Confirm and execute Sheets sync
-     * LEGACY BACKEND CODE - COMMENTED OUT
-     */
     fun confirmAndSyncToSheets(payrollId: String) {
-        // TODO: Backend removed - not needed for local mode
+        // TODO: Implement Sheets sync for local mode
         emitSideEffect(PayrollEffect.ShowError("Sheets sync not yet implemented for local mode"))
-        /* LEGACY BACKEND CODE - COMMENTED OUT
-        scope.launch {
-            try {
-                emitSideEffect(PayrollEffect.ShowToast("📤 Αποστολή στο Google Sheets..."))
-
-                when (val syncResult = payrollRepository.syncPayrollToSheets(payrollId)) {
-                    is RepositoryResult.Success -> {
-                        val response = syncResult.data
-
-                        if (response.status == "success") {
-                            val actionText = if (response.mode == "updated") "ενημερώθηκε" else "προστέθηκε"
-                            val masterWritten = response.masterWritten ?: false
-                            val detailsWritten = response.detailsWritten ?: false
-                            val detailRows = response.detailRows ?: 0
-
-                            if (masterWritten && detailsWritten) {
-                                emitSideEffect(
-                                    PayrollEffect.ShowToast(
-                                        "✅ Το payroll $actionText στο Google Sheets!\n" +
-                                                "📊 ${detailRows} client details"
-                                    )
-                                )
-                            } else {
-                                emitSideEffect(
-                                    PayrollEffect.ShowError(
-                                        "Μερική αποτυχία sync:\n" +
-                                                "Master: ${if (masterWritten) "✅" else "❌"}\n" +
-                                                "Details: ${if (detailsWritten) "✅" else "❌"}"
-                                    )
-                                )
-                            }
-                        } else {
-                            // Error από backend
-                            emitSideEffect(
-                                PayrollEffect.ShowError(
-                                    "Σφάλμα sync: ${response.message ?: "Unknown error"}"
-                                )
-                            )
-                        }
-                    }
-                    is RepositoryResult.Error -> {
-                        emitSideEffect(
-                            PayrollEffect.ShowError(
-                                "Σφάλμα sync: ${syncResult.exception.message}"
-                            )
-                        )
-                    }
-                }
-
-            } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα sync: ${e.message}"))
-            }
-        }
-        */
     }
 
     private fun emitSideEffect(effect: PayrollEffect) {
@@ -901,14 +739,14 @@ class PayrollViewModel(
      * Refresh data - reload employees and retry failed operations
      */
     private fun refreshData() {
-        println("🔄 DEBUG: refreshData() called")
+        Logger.debug("PayrollViewModel", "refreshData() called")
         scope.launch {
             try {
-                println("🔄 DEBUG: Starting refresh process")
+                Logger.debug("PayrollViewModel", "Starting refresh process")
                 emitSideEffect(PayrollEffect.ShowToast("🔄 Ανανέωση δεδομένων..."))
 
                 // Reload employees from database
-                println("🔄 DEBUG: Loading employees...")
+                Logger.debug("PayrollViewModel", "Loading employees...")
                 loadEmployees()
 
                 // If there was an error in calculation, retry
