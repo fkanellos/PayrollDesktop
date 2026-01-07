@@ -38,8 +38,7 @@ interface IMatchConfirmationRepository {
 class PayrollViewModel(
     private val payrollRepository: PayrollRepository,
     private val databaseSyncService: DatabaseSyncService,
-    private val matchConfirmationRepository: IMatchConfirmationRepository,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val matchConfirmationRepository: IMatchConfirmationRepository
 ) : BaseViewModel<PayrollState, PayrollAction, PayrollEffect>() {
 
     override val initialState = PayrollState()
@@ -52,7 +51,7 @@ class PayrollViewModel(
         _uiState.value = initialState
 
         // Then load data
-        scope.launch {
+        viewModelScope.launch {
             delay(100) // Small delay to ensure UI is ready
             handleAction(PayrollAction.LoadEmployees)
             handleAction(PayrollAction.SetDefaultDateRange)
@@ -228,7 +227,7 @@ class PayrollViewModel(
 
         val suggestedMatch = match.suggestedMatch ?: return
 
-        scope.launch {
+        viewModelScope.launch {
             try {
                 // Save confirmation to database
                 matchConfirmationRepository.saveConfirmation(
@@ -273,7 +272,7 @@ class PayrollViewModel(
             return
         }
 
-        scope.launch {
+        viewModelScope.launch {
             try {
                 // Save rejection to database (with empty client name to indicate rejection)
                 matchConfirmationRepository.saveConfirmation(
@@ -322,7 +321,7 @@ class PayrollViewModel(
             return
         }
 
-        scope.launch {
+        viewModelScope.launch {
             try {
                 // Create client via API (will be saved to backend and local DB)
                 val newClient = Client(
@@ -374,7 +373,7 @@ class PayrollViewModel(
      * Sync database from Google Sheets
      */
     private fun syncDatabase() {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 emitSideEffect(PayrollEffect.ShowToast("🔄 Συγχρονισμός βάσης δεδομένων από Google Sheets..."))
 
@@ -446,7 +445,7 @@ class PayrollViewModel(
     }
 
     private fun loadEmployees() {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 updateState { it.copy(isLoading = true, error = null) }
 
@@ -482,7 +481,7 @@ class PayrollViewModel(
     }
 
     private fun validateSelectedEmployee(employee: Employee) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 // Check for employee clients
                 when (val result = payrollRepository.getEmployeeClients(employee.id)) {
@@ -573,7 +572,7 @@ class PayrollViewModel(
         val startDate = state.startDate ?: return
         val endDate = state.endDate ?: return
 
-        scope.launch {
+        viewModelScope.launch {
             try {
                 emitSideEffect(PayrollEffect.ShowToast("Έναρξη υπολογισμού μισθοδοσίας..."))
 
@@ -679,7 +678,7 @@ class PayrollViewModel(
     }
 
     private fun emitSideEffect(effect: PayrollEffect) {
-        scope.launch {
+        viewModelScope.launch {
             _sideEffect.emit(effect)
         }
     }
@@ -740,7 +739,7 @@ class PayrollViewModel(
      */
     private fun refreshData() {
         Logger.debug("PayrollViewModel", "refreshData() called")
-        scope.launch {
+        viewModelScope.launch {
             try {
                 Logger.debug("PayrollViewModel", "Starting refresh process")
                 emitSideEffect(PayrollEffect.ShowToast("🔄 Ανανέωση δεδομένων..."))
@@ -768,7 +767,8 @@ class PayrollViewModel(
         }
     }
 
-    fun onCleared() {
-        scope.cancel()
+    override fun onCleared() {
+        // Call parent to cancel viewModelScope
+        super.onCleared()
     }
 }

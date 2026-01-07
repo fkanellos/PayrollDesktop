@@ -1,5 +1,9 @@
 package com.payroll.app.desktop.core.base
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,6 +13,11 @@ import kotlinx.coroutines.flow.asStateFlow
  * @param State - The UI state type
  * @param Action - The user action type
  * @param Effect - The side effect type (navigation, toasts, etc)
+ *
+ * Features:
+ * - Lifecycle-aware viewModelScope that auto-cancels on clear
+ * - Thread-safe state management with StateFlow
+ * - Structured concurrency with SupervisorJob
  */
 abstract class BaseViewModel<State : UiState, Action : UiAction, Effect : UiEffect> {
 
@@ -16,6 +25,12 @@ abstract class BaseViewModel<State : UiState, Action : UiAction, Effect : UiEffe
 
     protected val _uiState: MutableStateFlow<State> by lazy { MutableStateFlow(initialState) }
     val uiState: StateFlow<State> by lazy { _uiState.asStateFlow() }
+
+    /**
+     * Lifecycle-aware coroutine scope for this ViewModel
+     * Automatically cancelled when onCleared() is called
+     */
+    protected val viewModelScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     /**
      * Handle user actions - delegates to reduce for state updates
@@ -37,4 +52,13 @@ abstract class BaseViewModel<State : UiState, Action : UiAction, Effect : UiEffe
      * Pure function that takes current state + action and returns new state
      */
     protected abstract fun reduce(currentState: State, action: Action): State
+
+    /**
+     * Called when this ViewModel is cleared
+     * Cancels all coroutines launched in viewModelScope
+     * Override to add custom cleanup logic
+     */
+    open fun onCleared() {
+        viewModelScope.cancel()
+    }
 }

@@ -313,7 +313,7 @@ class ClientManagementViewModel(
         }
     }
 
-    fun onCleared() {
+    override fun onCleared() {
         scope.cancel()
     }
 }

@@ -282,7 +282,7 @@ class EmployeeManagementViewModel(
         }
     }
 
-    fun onCleared() {
+    override fun onCleared() {
         scope.cancel()
     }
 }
