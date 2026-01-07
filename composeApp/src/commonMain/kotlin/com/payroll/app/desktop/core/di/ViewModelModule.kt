@@ -13,12 +13,15 @@ import org.koin.dsl.module
  */
 val viewModelModule = module {
 
-    // PayrollViewModel - depends on PayrollRepository, DatabaseSyncService, and MatchConfirmationRepository
+    // PayrollViewModel - depends on UseCases and services
     factory {
         PayrollViewModel(
             payrollRepository = get(),
             databaseSyncService = get(),
-            matchConfirmationRepository = get()
+            payrollCalculationUseCase = get(),
+            matchConfirmationUseCase = get(),
+            clientQuickAddUseCase = get(),
+            payrollExportUseCase = get()
         )
     }
 

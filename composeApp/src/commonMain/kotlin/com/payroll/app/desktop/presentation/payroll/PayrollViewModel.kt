@@ -3,18 +3,20 @@ package com.payroll.app.desktop.presentation.payroll
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.constants.AppConstants
-import com.payroll.app.desktop.core.export.ExportService
+import com.payroll.app.desktop.core.export.ExportResult
 import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.data.repositories.PayrollRepository
-import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.ClientPayrollDetail
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.domain.models.EmployeeInfo
-import com.payroll.app.desktop.domain.models.PayrollRequest
 import com.payroll.app.desktop.domain.models.PayrollResponse
 import com.payroll.app.desktop.domain.models.PayrollSummary
 import com.payroll.app.desktop.domain.models.UncertainMatch
 import com.payroll.app.desktop.domain.service.DatabaseSyncService
+import com.payroll.app.desktop.domain.usecases.ClientQuickAddUseCase
+import com.payroll.app.desktop.domain.usecases.MatchConfirmationUseCase
+import com.payroll.app.desktop.domain.usecases.PayrollCalculationUseCase
+import com.payroll.app.desktop.domain.usecases.PayrollExportUseCase
 import com.payroll.app.desktop.utils.DateRanges
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,7 +29,7 @@ import kotlinx.datetime.minus
 
 /**
  * PayrollViewModel implementing MVI pattern
- * Handles all payroll calculation logic and state management
+ * Handles UI state management and delegates business logic to UseCases
  * Enhanced με calendar support και improved UX
  */
 // Interface for MatchConfirmationRepository (to avoid platform-specific dependencies)
@@ -39,7 +41,10 @@ interface IMatchConfirmationRepository {
 class PayrollViewModel(
     private val payrollRepository: PayrollRepository,
     private val databaseSyncService: DatabaseSyncService,
-    private val matchConfirmationRepository: IMatchConfirmationRepository
+    private val payrollCalculationUseCase: PayrollCalculationUseCase,
+    private val matchConfirmationUseCase: MatchConfirmationUseCase,
+    private val clientQuickAddUseCase: ClientQuickAddUseCase,
+    private val payrollExportUseCase: PayrollExportUseCase
 ) : BaseViewModel<PayrollState, PayrollAction, PayrollEffect>() {
 
     override val initialState = PayrollState()
@@ -218,7 +223,7 @@ class PayrollViewModel(
     }
 
     /**
-     * Confirm an uncertain match - save to database
+     * Confirm an uncertain match - delegates to MatchConfirmationUseCase
      */
     private fun confirmMatch(match: UncertainMatch, employeeId: String?) {
         if (employeeId == null) {
@@ -226,45 +231,39 @@ class PayrollViewModel(
             return
         }
 
-        val suggestedMatch = match.suggestedMatch ?: return
-
         viewModelScope.launch {
-            try {
-                // Save confirmation to database
-                matchConfirmationRepository.saveConfirmation(
-                    eventTitle = match.eventTitle,
-                    matchedClientName = suggestedMatch.clientName,
-                    employeeId = employeeId
-                )
+            when (val result = matchConfirmationUseCase.confirmMatch(match, employeeId)) {
+                is MatchConfirmationUseCase.ConfirmationResult.Confirmed -> {
+                    // Remove from uncertainMatches list
+                    updateState { currentState ->
+                        currentState.copy(
+                            uncertainMatches = currentState.uncertainMatches - match
+                        )
+                    }
 
-                // Remove from uncertainMatches list
-                updateState { currentState ->
-                    currentState.copy(
-                        uncertainMatches = currentState.uncertainMatches - match
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "✅ Αποθηκεύτηκε: '${result.eventTitle}' → '${result.clientName}'"
+                        )
                     )
-                }
 
-                emitSideEffect(
-                    PayrollEffect.ShowToast(
-                        "✅ Αποθηκεύτηκε: '${match.eventTitle}' → '${suggestedMatch.clientName}'"
-                    )
-                )
-
-                // If all matches are confirmed, recalculate payroll
-                if (uiState.value.uncertainMatches.isEmpty()) {
-                    emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επιβεβαιώθηκαν! Επαναυπολογισμός..."))
-                    delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
-                    handleAction(PayrollAction.CalculatePayroll)
+                    // If all matches are confirmed, recalculate payroll
+                    if (uiState.value.uncertainMatches.isEmpty()) {
+                        emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επιβεβαιώθηκαν! Επαναυπολογισμός..."))
+                        delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
+                        handleAction(PayrollAction.CalculatePayroll)
+                    }
                 }
-            } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα αποθήκευσης: ${e.message}"))
+                is MatchConfirmationUseCase.ConfirmationResult.Error -> {
+                    emitSideEffect(PayrollEffect.ShowError(result.message))
+                }
+                else -> {}
             }
         }
     }
 
     /**
-     * Reject an uncertain match - keep event as unmatched
-     * Save rejection to database so we don't ask again
+     * Reject an uncertain match - delegates to MatchConfirmationUseCase
      */
     private fun rejectMatch(match: UncertainMatch) {
         val employeeId = uiState.value.selectedEmployee?.id
@@ -274,41 +273,38 @@ class PayrollViewModel(
         }
 
         viewModelScope.launch {
-            try {
-                // Save rejection to database (with empty client name to indicate rejection)
-                matchConfirmationRepository.saveConfirmation(
-                    eventTitle = match.eventTitle,
-                    matchedClientName = AppConstants.Markers.REJECTED_MATCH_MARKER,  // Special marker for rejections
-                    employeeId = employeeId
-                )
+            when (val result = matchConfirmationUseCase.rejectMatch(match, employeeId)) {
+                is MatchConfirmationUseCase.ConfirmationResult.Rejected -> {
+                    // Remove from uncertainMatches list
+                    updateState { currentState ->
+                        currentState.copy(
+                            uncertainMatches = currentState.uncertainMatches - match
+                        )
+                    }
 
-                // Remove from uncertainMatches list
-                updateState { currentState ->
-                    currentState.copy(
-                        uncertainMatches = currentState.uncertainMatches - match
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "Απορρίφθηκε: '${result.eventTitle}'"
+                        )
                     )
-                }
 
-                emitSideEffect(
-                    PayrollEffect.ShowToast(
-                        "Απορρίφθηκε: '${match.eventTitle}'"
-                    )
-                )
-
-                // If all matches are processed, recalculate payroll
-                if (uiState.value.uncertainMatches.isEmpty()) {
-                    emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επεξεργάστηκαν! Επαναυπολογισμός..."))
-                    delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
-                    handleAction(PayrollAction.CalculatePayroll)
+                    // If all matches are processed, recalculate payroll
+                    if (uiState.value.uncertainMatches.isEmpty()) {
+                        emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επεξεργάστηκαν! Επαναυπολογισμός..."))
+                        delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
+                        handleAction(PayrollAction.CalculatePayroll)
+                    }
                 }
-            } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα αποθήκευσης rejection: ${e.message}"))
+                is MatchConfirmationUseCase.ConfirmationResult.Error -> {
+                    emitSideEffect(PayrollEffect.ShowError(result.message))
+                }
+                else -> {}
             }
         }
     }
 
     /**
-     * Add unmatched client to local database
+     * Add unmatched client - delegates to ClientQuickAddUseCase
      */
     private fun addUnmatchedClient(
         name: String,
@@ -323,49 +319,31 @@ class PayrollViewModel(
         }
 
         viewModelScope.launch {
-            try {
-                // Create client via API (will be saved to backend and local DB)
-                val newClient = Client(
-                    id = 0,
-                    name = name,
-                    price = price,
-                    employeePrice = employeePrice,
-                    companyPrice = companyPrice,
-                    employeeId = employeeId,
-                    pendingPayment = false
-                )
-
-                when (val result = payrollRepository.createClient(newClient)) {
-                    is RepositoryResult.Success -> {
-                        emitSideEffect(
-                            PayrollEffect.ShowToast(
-                                "✅ Client '$name' added! (€$price: Employee €$employeePrice / Company €$companyPrice)"
-                            )
+            when (val result = clientQuickAddUseCase(
+                name = name,
+                price = price,
+                employeePrice = employeePrice,
+                companyPrice = companyPrice,
+                employeeId = employeeId
+            )) {
+                is ClientQuickAddUseCase.QuickAddResult.Success -> {
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "✅ Client '${result.clientName}' added! (€$price: Employee €$employeePrice / Company €$companyPrice)"
                         )
-                        emitSideEffect(PayrollEffect.ClientAdded(name))
-                    }
-                    is RepositoryResult.Error -> {
-                        // Remove from addedClients on failure
-                        updateState { currentState ->
-                            currentState.copy(
-                                addedClients = currentState.addedClients - name
-                            )
-                        }
-                        emitSideEffect(
-                            PayrollEffect.ShowError("Failed to add client: ${result.exception.message}")
-                        )
-                        emitSideEffect(PayrollEffect.ClientAddFailed(name, result.exception.message ?: "Unknown error"))
-                    }
-                }
-            } catch (e: Exception) {
-                // Remove from addedClients on failure
-                updateState { currentState ->
-                    currentState.copy(
-                        addedClients = currentState.addedClients - name
                     )
+                    emitSideEffect(PayrollEffect.ClientAdded(result.clientName))
                 }
-                emitSideEffect(PayrollEffect.ShowError("Error adding client: ${e.message}"))
-                emitSideEffect(PayrollEffect.ClientAddFailed(name, e.message ?: "Unknown error"))
+                is ClientQuickAddUseCase.QuickAddResult.Error -> {
+                    // Remove from addedClients on failure
+                    updateState { currentState ->
+                        currentState.copy(
+                            addedClients = currentState.addedClients - name
+                        )
+                    }
+                    emitSideEffect(PayrollEffect.ShowError("Failed to add client: ${result.message}"))
+                    emitSideEffect(PayrollEffect.ClientAddFailed(result.clientName, result.message))
+                }
             }
         }
     }
@@ -568,109 +546,103 @@ class PayrollViewModel(
         }
     }
 
+    /**
+     * Calculate payroll - delegates to PayrollCalculationUseCase
+     */
     private fun calculatePayroll(state: PayrollState) {
         val employee = state.selectedEmployee ?: return
         val startDate = state.startDate ?: return
         val endDate = state.endDate ?: return
 
         viewModelScope.launch {
-            try {
-                emitSideEffect(PayrollEffect.ShowToast("Έναρξη υπολογισμού μισθοδοσίας..."))
+            emitSideEffect(PayrollEffect.ShowToast("Έναρξη υπολογισμού μισθοδοσίας..."))
 
-                val request = PayrollRequest(
-                    employeeId = employee.id,
-                    startDate = startDate.toString(),
-                    endDate = endDate.toString()
-                )
+            when (val result = payrollCalculationUseCase(employee, startDate, endDate)) {
+                is PayrollCalculationUseCase.CalculationResult.Success -> {
+                    val uncertainMatches = result.uncertainMatches
 
-                when (val result = payrollRepository.calculatePayroll(request)) {
-                    is RepositoryResult.Success -> {
-                        // Check if there are uncertain matches
-                        val allUncertainMatches = result.data.eventTracking?.uncertainMatches ?: emptyList()
-
-                        Logger.debug("PayrollViewModel", "Found ${allUncertainMatches.size} uncertain matches")
-                        allUncertainMatches.forEach { match ->
-                            Logger.debug("PayrollViewModel", "  - ${match.eventTitle} → ${match.suggestedMatch?.clientName} (${match.suggestedMatch?.confidence})")
-                        }
-
-                        // Filter out matches that have already been confirmed OR rejected
-                        val uncertainMatches = allUncertainMatches.filter { match ->
-                            val confirmed = matchConfirmationRepository.getConfirmedMatch(
-                                eventTitle = match.eventTitle,
-                                employeeId = employee.id
-                            )
-                            val isFiltered = confirmed != null
-                            if (isFiltered) {
-                                val action = if (confirmed == AppConstants.Markers.REJECTED_MATCH_MARKER) "rejected" else "confirmed as '$confirmed'"
-                                Logger.debug("PayrollViewModel", "Filtered out '${match.eventTitle}' (already $action)")
-                            }
-                            confirmed == null  // Only keep if NOT confirmed/rejected yet
-                        }
-
-                        Logger.debug("PayrollViewModel", "After filtering: ${uncertainMatches.size} uncertain matches remaining")
-
-                        if (uncertainMatches.isNotEmpty()) {
-                            // Show confirmation dialog for uncertain matches
-                            updateState { currentState ->
-                                currentState.copy(
-                                    uncertainMatches = uncertainMatches,
-                                    payrollResult = result.data,
-                                    isCalculating = false
-                                )
-                            }
-                            emitSideEffect(
-                                PayrollEffect.ShowToast(
-                                    "⚠️ Βρέθηκαν ${uncertainMatches.size} αβέβαιες αντιστοιχίες που χρειάζονται επιβεβαίωση"
-                                )
-                            )
-                        } else {
-                            updateState { currentState ->
-                                currentState.copy(
-                                    payrollResult = result.data,
-                                    isCalculating = false,
-                                    uncertainMatches = emptyList()
-                                )
-                            }
-
-                            val summary = result.data.summary
-                            emitSideEffect(
-                                PayrollEffect.ShowToast(
-                                    "✅ Υπολογισμός ολοκληρώθηκε! ${summary.totalSessions} συνεδρίες, ${summary.totalRevenue.toString()}€"
-                                )
-                            )
-                        }
-                    }
-                    is RepositoryResult.Error -> {
+                    if (uncertainMatches.isNotEmpty()) {
+                        // Show confirmation dialog for uncertain matches
                         updateState { currentState ->
                             currentState.copy(
-                                isCalculating = false,
-                                error = "Σφάλμα υπολογισμού: ${result.exception.message}"
+                                uncertainMatches = uncertainMatches,
+                                payrollResult = result.payrollResponse,
+                                isCalculating = false
                             )
                         }
-                        emitSideEffect(PayrollEffect.ShowError("Σφάλμα υπολογισμού: ${result.exception.message}"))
+                        emitSideEffect(
+                            PayrollEffect.ShowToast(
+                                "⚠️ Βρέθηκαν ${uncertainMatches.size} αβέβαιες αντιστοιχίες που χρειάζονται επιβεβαίωση"
+                            )
+                        )
+                    } else {
+                        updateState { currentState ->
+                            currentState.copy(
+                                payrollResult = result.payrollResponse,
+                                isCalculating = false,
+                                uncertainMatches = emptyList()
+                            )
+                        }
+
+                        val summary = result.payrollResponse.summary
+                        emitSideEffect(
+                            PayrollEffect.ShowToast(
+                                "✅ Υπολογισμός ολοκληρώθηκε! ${summary.totalSessions} συνεδρίες, ${summary.totalRevenue.toString()}€"
+                            )
+                        )
                     }
                 }
-
-            } catch (e: Exception) {
-                updateState { currentState ->
-                    currentState.copy(
-                        isCalculating = false,
-                        error = e.message ?: "Σφάλμα υπολογισμού μισθοδοσίας"
-                    )
+                is PayrollCalculationUseCase.CalculationResult.Error -> {
+                    updateState { currentState ->
+                        currentState.copy(
+                            isCalculating = false,
+                            error = "Σφάλμα υπολογισμού: ${result.message}"
+                        )
+                    }
+                    emitSideEffect(PayrollEffect.ShowError("Σφάλμα υπολογισμού: ${result.message}"))
                 }
-                emitSideEffect(PayrollEffect.ShowError("Σφάλμα υπολογισμού: ${e.message}"))
             }
         }
     }
 
+    /**
+     * Export to PDF - delegates to PayrollExportUseCase
+     */
     private fun exportToPdf(result: PayrollResponse) {
-        // TODO: Implement local PDF export
-        emitSideEffect(PayrollEffect.ShowError("PDF export not yet implemented for local mode"))
+        viewModelScope.launch {
+            when (val exportResult = payrollExportUseCase.exportToPdf(result)) {
+                is ExportResult.Success -> {
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "✅ PDF δημιουργήθηκε: ${exportResult.filePath}"
+                        )
+                    )
+                }
+                is ExportResult.Error -> {
+                    emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής PDF: ${exportResult.message}"))
+                }
+            }
+        }
     }
 
+    /**
+     * Export to Excel - delegates to PayrollExportUseCase
+     */
     private fun exportToExcel(result: PayrollResponse) {
-        // TODO: Implement local Excel export
-        emitSideEffect(PayrollEffect.ShowError("Excel export not yet implemented for local mode"))
+        viewModelScope.launch {
+            when (val exportResult = payrollExportUseCase.exportToExcel(result)) {
+                is ExportResult.Success -> {
+                    emitSideEffect(
+                        PayrollEffect.ShowToast(
+                            "✅ Excel δημιουργήθηκε: ${exportResult.filePath}"
+                        )
+                    )
+                }
+                is ExportResult.Error -> {
+                    emitSideEffect(PayrollEffect.ShowError("Σφάλμα εξαγωγής Excel: ${exportResult.message}"))
+                }
+            }
+        }
     }
 
     fun confirmAndSyncToSheets(payrollId: String) {

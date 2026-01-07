@@ -78,6 +78,9 @@ kotlin {
 
             // KSafe - Encrypted credential storage
             implementation("eu.anifantakis:ksafe:1.3.0")
+
+            // SLF4J - Logging for Google API client
+            implementation("org.slf4j:slf4j-simple:2.0.9")
         }
     }
 }

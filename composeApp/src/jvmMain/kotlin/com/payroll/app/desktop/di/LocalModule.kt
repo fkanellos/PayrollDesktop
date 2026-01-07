@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.di
 
+import com.payroll.app.desktop.core.export.ExportService
 import com.payroll.app.desktop.data.repositories.*
 import com.payroll.app.desktop.database.DriverFactory
 import com.payroll.app.desktop.database.PayrollDatabase
@@ -41,6 +42,7 @@ val localModule = module {
     single { ClientMatchingService() }
     single { PayrollCalculationService(get()) }
     single { DatabaseSyncService(get(), get(), get()) }
+    single { ExportService() }
 
     // Main Repositories (expect/actual)
     single<PayrollRepository> { PayrollRepository(get(), get(), get(), get(), get(), get()) }

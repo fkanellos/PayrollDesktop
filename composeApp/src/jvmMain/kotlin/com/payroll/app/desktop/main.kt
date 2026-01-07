@@ -3,6 +3,7 @@ package com.payroll.app.desktop
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.payroll.app.desktop.core.di.commonModule
+import com.payroll.app.desktop.core.di.useCaseModule
 import com.payroll.app.desktop.core.di.viewModelModule
 import com.payroll.app.desktop.di.localModule
 import com.payroll.app.desktop.google.GoogleCredentialProvider
@@ -49,6 +50,7 @@ fun main() {
             modules(
                 commonModule,      // Common dependencies
                 localModule,       // Local database and Google Calendar
+                useCaseModule,     // Domain UseCases
                 viewModelModule    // ViewModels
             )
         }
