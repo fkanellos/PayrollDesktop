@@ -2,6 +2,7 @@ package com.payroll.app.desktop.google
 
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.model.ValueRange
+import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.domain.models.Client
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,6 +21,8 @@ class GoogleSheetsService(
     private val credentialProvider: GoogleCredentialProvider
 ) {
     companion object {
+        private const val TAG = "GoogleSheetsService"
+
         // Main payroll spreadsheet ID (Google Sheets format)
         // TODO: This should be configurable, not hardcoded
         private const val SPREADSHEET_ID = "1r_fY7YF3ZWnhDkGq84Cxub6Ok2Dnfm0iqPTB8lzHZRU"
@@ -34,7 +37,7 @@ class GoogleSheetsService(
         try {
             sheetsService = credentialProvider.getSheetsService()
         } catch (e: Exception) {
-            println("Failed to initialize Google Sheets: ${e.message}")
+            Logger.error(TAG, "Failed to initialize Google Sheets", e)
         }
     }
 
@@ -80,11 +83,11 @@ class GoogleSheetsService(
             // Format: 'SheetName'!A:D
             val range = "'$sheetName'!$CLIENT_DATA_RANGE"
 
-            println("📝 Writing to Google Sheets:")
-            println("   Spreadsheet: $SPREADSHEET_ID")
-            println("   Sheet/Tab: $sheetName")
-            println("   Range: $range")
-            println("   Data: ${client.name} | €${client.price} | €${client.employeePrice} | €${client.companyPrice}")
+            Logger.info(TAG, "Writing to Google Sheets")
+            Logger.debug(TAG, "Spreadsheet: $SPREADSHEET_ID")
+            Logger.debug(TAG, "Sheet/Tab: $sheetName")
+            Logger.debug(TAG, "Range: $range")
+            Logger.debug(TAG, "Data: ${client.name} | €${client.price} | €${client.employeePrice} | €${client.companyPrice}")
 
             val result = service.spreadsheets().values()
                 .append(SPREADSHEET_ID, range, body)
@@ -93,7 +96,7 @@ class GoogleSheetsService(
                 .execute()
 
             val updatedRange = result.updates?.updatedRange ?: "unknown"
-            println("✅ Successfully wrote to: $updatedRange")
+            Logger.info(TAG, "Successfully wrote to: $updatedRange")
 
             SheetsWriteResult.Success(
                 sheetName = sheetName,
@@ -102,8 +105,7 @@ class GoogleSheetsService(
             )
 
         } catch (e: Exception) {
-            println("❌ Error writing to Google Sheets: ${e.message}")
-            e.printStackTrace()
+            Logger.error(TAG, "Error writing to Google Sheets", e)
 
             // Provide helpful error messages
             val errorMessage = when {
@@ -134,11 +136,11 @@ class GoogleSheetsService(
 
             val sheetNames = spreadsheet.sheets?.map { it.properties?.title } ?: emptyList()
 
-            println("📋 Available sheets: $sheetNames")
+            Logger.info(TAG, "Available sheets: $sheetNames")
 
             sheetNames.contains(sheetName)
         } catch (e: Exception) {
-            println("Error checking sheet existence: ${e.message}")
+            Logger.error(TAG, "Error checking sheet existence", e)
             false
         }
     }
@@ -156,7 +158,7 @@ class GoogleSheetsService(
 
             spreadsheet.sheets?.mapNotNull { it.properties?.title } ?: emptyList()
         } catch (e: Exception) {
-            println("Error getting sheet names: ${e.message}")
+            Logger.error(TAG, "Error getting sheet names", e)
             emptyList()
         }
     }
@@ -170,17 +172,17 @@ class GoogleSheetsService(
         val service = sheetsService ?: return@withContext false
 
         if (sheetName.isBlank()) {
-            println("❌ Cannot create sheet with blank name")
+            Logger.error(TAG, "Cannot create sheet with blank name")
             return@withContext false
         }
 
         try {
-            println("📝 Creating new sheet tab: $sheetName")
+            Logger.info(TAG, "Creating new sheet tab: $sheetName")
 
             // First, check if sheet already exists
             val existingSheets = getSheetNames()
             if (existingSheets.contains(sheetName)) {
-                println("⚠️ Sheet tab '$sheetName' already exists")
+                Logger.warning(TAG, "Sheet tab '$sheetName' already exists")
                 return@withContext true  // Consider it success since it exists
             }
 
@@ -202,7 +204,7 @@ class GoogleSheetsService(
                 .batchUpdate(SPREADSHEET_ID, batchUpdateRequest)
                 .execute()
 
-            println("✅ Created sheet tab: $sheetName")
+            Logger.info(TAG, "Created sheet tab: $sheetName")
 
             // Now add headers to the new sheet
             val headers = listOf(
@@ -219,12 +221,11 @@ class GoogleSheetsService(
                 .setValueInputOption("RAW")
                 .execute()
 
-            println("✅ Added headers to sheet: $sheetName")
+            Logger.info(TAG, "Added headers to sheet: $sheetName")
 
             true
         } catch (e: Exception) {
-            println("❌ Error creating sheet tab '$sheetName': ${e.message}")
-            e.printStackTrace()
+            Logger.error(TAG, "Error creating sheet tab '$sheetName'", e)
             false
         }
     }
@@ -240,8 +241,8 @@ class GoogleSheetsService(
         }
 
         try {
-            println("📖 Reading employees from Google Sheets...")
-            println("   Spreadsheet ID: $SPREADSHEET_ID")
+            Logger.info(TAG, "Reading employees from Google Sheets...")
+            Logger.debug(TAG, "Spreadsheet ID: $SPREADSHEET_ID")
 
             // First, verify this is a valid Sheets document
             try {
@@ -249,9 +250,9 @@ class GoogleSheetsService(
                     .get(SPREADSHEET_ID)
                     .setFields("spreadsheetId,properties(title)")
                     .execute()
-                println("   ✓ Spreadsheet found: ${metadata.properties?.title}")
+                Logger.info(TAG, "Spreadsheet found: ${metadata.properties?.title}")
             } catch (e: Exception) {
-                println("❌ Failed to access spreadsheet: ${e.message}")
+                Logger.error(TAG, "Failed to access spreadsheet", e)
                 if (e.message?.contains("404") == true) {
                     return@withContext SheetsReadResult.Error(
                         "Spreadsheet not found. Please verify SPREADSHEET_ID: $SPREADSHEET_ID"
@@ -275,7 +276,7 @@ class GoogleSheetsService(
             val values = response.getValues()
 
             if (values.isNullOrEmpty()) {
-                println("⚠️ No employee data found in sheet")
+                Logger.warning(TAG, "No employee data found in sheet")
                 return@withContext SheetsReadResult.Success(emptyList())
             }
 
@@ -294,17 +295,16 @@ class GoogleSheetsService(
                         supervisionPrice = row.getOrNull(4)?.toString()?.toDoubleOrNull() ?: 0.0
                     )
                 } catch (e: Exception) {
-                    println("⚠️ Error parsing employee row: ${e.message}")
+                    Logger.warning(TAG, "Error parsing employee row: ${e.message}")
                     null
                 }
             }
 
-            println("✅ Read ${employees.size} employees from sheet")
+            Logger.info(TAG, "Read ${employees.size} employees from sheet")
             SheetsReadResult.Success(employees)
 
         } catch (e: Exception) {
-            println("❌ Error reading employees: ${e.message}")
-            e.printStackTrace()
+            Logger.error(TAG, "Error reading employees", e)
             SheetsReadResult.Error("Failed to read employees: ${e.message}")
         }
     }
@@ -327,7 +327,7 @@ class GoogleSheetsService(
         }
 
         try {
-            println("📖 Reading clients from sheet tab: $sheetName")
+            Logger.info(TAG, "Reading clients from sheet tab: $sheetName")
 
             // Read from employee's sheet tab, columns A-D
             val range = "'$sheetName'!A2:D"  // Skip header row
@@ -339,7 +339,7 @@ class GoogleSheetsService(
             val values = response.getValues()
 
             if (values.isNullOrEmpty()) {
-                println("⚠️ No client data found in sheet tab: $sheetName")
+                Logger.warning(TAG, "No client data found in sheet tab: $sheetName")
                 return@withContext SheetsReadResult.Success(emptyList())
             }
 
@@ -358,24 +358,23 @@ class GoogleSheetsService(
                         employeeId = employeeId
                     )
                 } catch (e: Exception) {
-                    println("⚠️ Error parsing client row: ${e.message}")
+                    Logger.warning(TAG, "Error parsing client row: ${e.message}")
                     null
                 }
             }
 
-            println("✅ Read ${clients.size} clients from sheet tab: $sheetName")
+            Logger.info(TAG, "Read ${clients.size} clients from sheet tab: $sheetName")
             SheetsReadResult.Success(clients)
 
         } catch (e: Exception) {
             // If sheet tab doesn't exist, that's okay - employee just has no clients yet
             if (e.message?.contains("Unable to parse range") == true ||
                 e.message?.contains("not found") == true) {
-                println("ℹ️ Sheet tab '$sheetName' not found (employee has no clients yet)")
+                Logger.info(TAG, "Sheet tab '$sheetName' not found (employee has no clients yet)")
                 return@withContext SheetsReadResult.Success(emptyList())
             }
 
-            println("❌ Error reading clients from $sheetName: ${e.message}")
-            e.printStackTrace()
+            Logger.error(TAG, "Error reading clients from $sheetName", e)
             SheetsReadResult.Error("Failed to read clients from $sheetName: ${e.message}")
         }
     }

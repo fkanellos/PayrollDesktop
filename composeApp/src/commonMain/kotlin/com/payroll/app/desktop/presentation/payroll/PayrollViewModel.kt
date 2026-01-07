@@ -2,6 +2,7 @@ package com.payroll.app.desktop.presentation.payroll
 
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.base.RepositoryResult
+import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.export.ExportService
 import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.data.repositories.PayrollRepository
@@ -52,7 +53,7 @@ class PayrollViewModel(
 
         // Then load data
         viewModelScope.launch {
-            delay(100) // Small delay to ensure UI is ready
+            delay(AppConstants.Timing.UI_INIT_DELAY_MS)
             handleAction(PayrollAction.LoadEmployees)
             handleAction(PayrollAction.SetDefaultDateRange)
         }
@@ -252,7 +253,7 @@ class PayrollViewModel(
                 // If all matches are confirmed, recalculate payroll
                 if (uiState.value.uncertainMatches.isEmpty()) {
                     emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επιβεβαιώθηκαν! Επαναυπολογισμός..."))
-                    delay(500)
+                    delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
                     handleAction(PayrollAction.CalculatePayroll)
                 }
             } catch (e: Exception) {
@@ -277,7 +278,7 @@ class PayrollViewModel(
                 // Save rejection to database (with empty client name to indicate rejection)
                 matchConfirmationRepository.saveConfirmation(
                     eventTitle = match.eventTitle,
-                    matchedClientName = "__REJECTED__",  // Special marker for rejections
+                    matchedClientName = AppConstants.Markers.REJECTED_MATCH_MARKER,  // Special marker for rejections
                     employeeId = employeeId
                 )
 
@@ -297,7 +298,7 @@ class PayrollViewModel(
                 // If all matches are processed, recalculate payroll
                 if (uiState.value.uncertainMatches.isEmpty()) {
                     emitSideEffect(PayrollEffect.ShowToast("Όλες οι αντιστοιχίες επεξεργάστηκαν! Επαναυπολογισμός..."))
-                    delay(500)
+                    delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
                     handleAction(PayrollAction.CalculatePayroll)
                 }
             } catch (e: Exception) {
@@ -530,10 +531,10 @@ class PayrollViewModel(
             else -> {
                 val daysDifference = endDate.date.toEpochDays() - startDate.date.toEpochDays()
                 when {
-                    daysDifference > 365 -> {
+                    daysDifference > AppConstants.DateRange.MAX_DATE_RANGE_DAYS -> {
                         state.copy(error = "Το διάστημα δεν μπορεί να υπερβαίνει το 1 έτος")
                     }
-                    daysDifference > 90 -> {
+                    daysDifference > AppConstants.DateRange.LARGE_DATE_RANGE_WARNING_DAYS -> {
                         // Show warning but allow calculation
                         emitSideEffect(
                             PayrollEffect.ShowToast(
@@ -600,7 +601,7 @@ class PayrollViewModel(
                             )
                             val isFiltered = confirmed != null
                             if (isFiltered) {
-                                val action = if (confirmed == "__REJECTED__") "rejected" else "confirmed as '$confirmed'"
+                                val action = if (confirmed == AppConstants.Markers.REJECTED_MATCH_MARKER) "rejected" else "confirmed as '$confirmed'"
                                 Logger.debug("PayrollViewModel", "Filtered out '${match.eventTitle}' (already $action)")
                             }
                             confirmed == null  // Only keep if NOT confirmed/rejected yet
@@ -751,7 +752,7 @@ class PayrollViewModel(
                 // If there was an error in calculation, retry
                 val currentState = uiState.value
                 if (currentState.error != null && currentState.selectedEmployee != null) {
-                    delay(500) // Small delay after loading employees
+                    delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS) // Small delay after loading employees
 
                     // Retry payroll calculation if it failed
                     if (currentState.startDate != null && currentState.endDate != null) {

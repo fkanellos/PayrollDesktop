@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.domain.service
 
+import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.data.repositories.LocalClientRepository
 import com.payroll.app.desktop.data.repositories.LocalEmployeeRepository
 import com.payroll.app.desktop.domain.models.Client
@@ -18,6 +19,9 @@ actual class DatabaseSyncService(
     private val employeeRepository: LocalEmployeeRepository,
     private val clientRepository: LocalClientRepository
 ) {
+    companion object {
+        private const val TAG = "DatabaseSyncService"
+    }
 
     /**
      * Sync all employees and clients from Google Sheets to local database
@@ -26,19 +30,19 @@ actual class DatabaseSyncService(
         try {
             val startTime = System.currentTimeMillis()
 
-            println("🔄 Starting database sync from Google Sheets...")
+            Logger.info(TAG, "Starting database sync from Google Sheets...")
 
             // Step 1: Read employees from the "Employees" sheet
             val employeesResult = sheetsService.readEmployees()
 
             when (employeesResult) {
                 is SheetsReadResult.Error -> {
-                    println("❌ Failed to read employees: ${employeesResult.message}")
+                    Logger.error(TAG, "Failed to read employees: ${employeesResult.message}")
                     return@withContext Result.failure(Exception(employeesResult.message))
                 }
                 is SheetsReadResult.Success -> {
                     val employeesData = employeesResult.data
-                    println("📊 Found ${employeesData.size} employees in sheet")
+                    Logger.info(TAG, "Found ${employeesData.size} employees in sheet")
 
                     var employeesInserted = 0
                     var employeesUpdated = 0
@@ -66,7 +70,7 @@ actual class DatabaseSyncService(
                             )
                             employeeRepository.insert(newEmployee)
                             employeesInserted++
-                            println("➕ Inserted employee: ${empData.name}")
+                            Logger.info(TAG, "Inserted employee: ${empData.name}")
                         } else {
                             // Update existing employee
                             val updatedEmployee = existingEmployee.copy(
@@ -78,7 +82,7 @@ actual class DatabaseSyncService(
                             )
                             employeeRepository.update(updatedEmployee)
                             employeesUpdated++
-                            println("↻ Updated employee: ${empData.name}")
+                            Logger.info(TAG, "Updated employee: ${empData.name}")
                         }
 
                         // Step 3: Read and sync clients for this employee
@@ -90,11 +94,11 @@ actual class DatabaseSyncService(
 
                             when (clientsResult) {
                                 is SheetsReadResult.Error -> {
-                                    println("⚠️ Failed to read clients for ${empData.name}: ${clientsResult.message}")
+                                    Logger.warning(TAG, "Failed to read clients for ${empData.name}: ${clientsResult.message}")
                                 }
                                 is SheetsReadResult.Success -> {
                                     val clientsData = clientsResult.data
-                                    println("   Found ${clientsData.size} clients for ${empData.name}")
+                                    Logger.info(TAG, "Found ${clientsData.size} clients for ${empData.name}")
 
                                     for (clientData in clientsData) {
                                         // Check if client exists for this employee
@@ -116,7 +120,7 @@ actual class DatabaseSyncService(
                                             )
                                             clientRepository.insert(newClient)
                                             clientsInserted++
-                                            println("   ➕ Inserted client: ${clientData.name}")
+                                            Logger.debug(TAG, "Inserted client: ${clientData.name}")
                                         } else {
                                             // Update existing client
                                             val updatedClient = existingClient.copy(
@@ -126,7 +130,7 @@ actual class DatabaseSyncService(
                                             )
                                             clientRepository.update(updatedClient)
                                             clientsUpdated++
-                                            println("   ↻ Updated client: ${clientData.name}")
+                                            Logger.debug(TAG, "Updated client: ${clientData.name}")
                                         }
                                     }
                                 }
@@ -143,16 +147,15 @@ actual class DatabaseSyncService(
                         durationMs = durationMs
                     )
 
-                    println("✅ Sync completed in ${durationMs}ms")
-                    println("   Employees: +$employeesInserted / ↻$employeesUpdated")
-                    println("   Clients: +$clientsInserted / ↻$clientsUpdated")
+                    Logger.info(TAG, "Sync completed in ${durationMs}ms")
+                    Logger.info(TAG, "Employees: +$employeesInserted / ↻$employeesUpdated")
+                    Logger.info(TAG, "Clients: +$clientsInserted / ↻$clientsUpdated")
 
                     Result.success(response)
                 }
             }
         } catch (e: Exception) {
-            println("❌ Sync failed: ${e.message}")
-            e.printStackTrace()
+            Logger.error(TAG, "Sync failed", e)
             Result.failure(e)
         }
     }

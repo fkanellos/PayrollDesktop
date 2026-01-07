@@ -1,6 +1,7 @@
 package com.payroll.app.desktop.presentation.client
 
 import com.payroll.app.desktop.core.base.BaseViewModel
+import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.data.repositories.ClientRepository
 import com.payroll.app.desktop.data.repositories.PayrollRepository
@@ -28,7 +29,7 @@ class ClientManagementViewModel(
     init {
         _uiState.value = initialState
         scope.launch {
-            delay(100)
+            delay(AppConstants.Timing.UI_INIT_DELAY_MS)
             handleAction(ClientManagementAction.LoadEmployees)
         }
     }

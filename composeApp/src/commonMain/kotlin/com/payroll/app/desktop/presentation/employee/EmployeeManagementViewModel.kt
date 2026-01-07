@@ -1,6 +1,7 @@
 package com.payroll.app.desktop.presentation.employee
 
 import com.payroll.app.desktop.core.base.BaseViewModel
+import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.data.repositories.EmployeeRepository
 import kotlinx.coroutines.*
@@ -24,7 +25,7 @@ class EmployeeManagementViewModel(
     init {
         _uiState.value = initialState
         scope.launch {
-            delay(100)
+            delay(AppConstants.Timing.UI_INIT_DELAY_MS)
             handleAction(EmployeeManagementAction.LoadEmployees)
         }
     }

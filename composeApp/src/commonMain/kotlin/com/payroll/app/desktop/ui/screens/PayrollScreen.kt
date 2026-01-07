@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.domain.models.Employee
 import com.payroll.app.desktop.presentation.payroll.*
 import com.payroll.app.desktop.ui.components.buttons.*
@@ -1521,7 +1522,13 @@ private fun UnmatchedEventsSection(
                                 if (!isEditing) {
                                     IconButton(
                                         onClick = {
-                                            onAddClient(name, name, 50.0, 22.5, 27.5)
+                                            onAddClient(
+                                                name,
+                                                name,
+                                                AppConstants.Pricing.DEFAULT_SESSION_PRICE,
+                                                AppConstants.Pricing.DEFAULT_EMPLOYEE_SHARE,
+                                                AppConstants.Pricing.DEFAULT_COMPANY_SHARE
+                                            )
                                         },
                                         modifier = Modifier
                                             .size(32.dp)

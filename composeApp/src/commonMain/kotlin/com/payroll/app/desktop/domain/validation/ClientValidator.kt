@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.domain.validation
 
+import com.payroll.app.desktop.core.utils.ValidationUtils
 import com.payroll.app.desktop.domain.models.ClientSimple
 import kotlin.math.abs
 
@@ -56,6 +57,68 @@ object ClientValidator {
                     field = "companyPrice",
                     message = "Η τιμή εταιρίας δεν μπορεί να είναι αρνητική",
                     code = ErrorCode.NEGATIVE_VALUE
+                )
+            )
+        }
+
+        // Check for NaN or Infinite values
+        if (!client.price.isFinite()) {
+            errors.add(
+                ValidationError(
+                    field = "price",
+                    message = "Η τιμή πελάτη περιέχει μη έγκυρη τιμή",
+                    code = ErrorCode.INVALID_NUMBER
+                )
+            )
+        }
+
+        if (!client.employeePrice.isFinite()) {
+            errors.add(
+                ValidationError(
+                    field = "employeePrice",
+                    message = "Η τιμή εργαζόμενου περιέχει μη έγκυρη τιμή",
+                    code = ErrorCode.INVALID_NUMBER
+                )
+            )
+        }
+
+        if (!client.companyPrice.isFinite()) {
+            errors.add(
+                ValidationError(
+                    field = "companyPrice",
+                    message = "Η τιμή εταιρίας περιέχει μη έγκυρη τιμή",
+                    code = ErrorCode.INVALID_NUMBER
+                )
+            )
+        }
+
+        // Check maximum values
+        if (client.price > ValidationUtils.PriceLimits.MAX_SESSION_PRICE) {
+            errors.add(
+                ValidationError(
+                    field = "price",
+                    message = "Η τιμή πελάτη δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SESSION_PRICE}",
+                    code = ErrorCode.EXCEEDS_MAXIMUM
+                )
+            )
+        }
+
+        if (client.employeePrice > ValidationUtils.PriceLimits.MAX_SESSION_PRICE) {
+            errors.add(
+                ValidationError(
+                    field = "employeePrice",
+                    message = "Η τιμή εργαζόμενου δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SESSION_PRICE}",
+                    code = ErrorCode.EXCEEDS_MAXIMUM
+                )
+            )
+        }
+
+        if (client.companyPrice > ValidationUtils.PriceLimits.MAX_SESSION_PRICE) {
+            errors.add(
+                ValidationError(
+                    field = "companyPrice",
+                    message = "Η τιμή εταιρίας δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SESSION_PRICE}",
+                    code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
         }
