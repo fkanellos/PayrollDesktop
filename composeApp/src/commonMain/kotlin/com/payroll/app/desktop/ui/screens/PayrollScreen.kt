@@ -116,10 +116,11 @@ fun PayrollScreen(
                 result = result,
                 onExportPdf = { viewModel.handleAction(PayrollAction.ExportToPdf) },
                 onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) },
-                onAddClient = { name, price, empPrice, compPrice ->
+                onAddClient = { originalTitle, editedName, price, empPrice, compPrice ->
                     viewModel.handleAction(
                         PayrollAction.AddUnmatchedClient(
-                            name = name,
+                            originalEventTitle = originalTitle,
+                            name = editedName,
                             price = price,
                             employeePrice = empPrice,
                             companyPrice = compPrice
@@ -796,7 +797,7 @@ private fun PayrollResults(
     onExportPdf: () -> Unit,
     onExportExcel: () -> Unit,
     onNavigateToClients: () -> Unit = {},
-    onAddClient: (name: String, price: Double, employeePrice: Double, companyPrice: Double) -> Unit = { _, _, _, _ -> },
+    onAddClient: (originalTitle: String, editedName: String, price: Double, employeePrice: Double, companyPrice: Double) -> Unit = { _, _, _, _, _ -> },
     addedClients: Set<String> = emptySet()
 ) {
     Column(
@@ -1308,7 +1309,7 @@ private fun EmptyClientBreakdownCard() {
 private fun UnmatchedEventsSection(
     unmatchedEvents: List<com.payroll.app.desktop.domain.models.UnmatchedEvent>,
     onManageClients: () -> Unit = {},
-    onAddClient: (name: String, price: Double, employeePrice: Double, companyPrice: Double) -> Unit = { _, _, _, _ -> },
+    onAddClient: (originalTitle: String, editedName: String, price: Double, employeePrice: Double, companyPrice: Double) -> Unit = { _, _, _, _, _ -> },
     addedClients: Set<String> = emptySet()
 ) {
     if (unmatchedEvents.isEmpty()) return
@@ -1320,6 +1321,7 @@ private fun UnmatchedEventsSection(
 
     // State for editing
     var editingName by remember { mutableStateOf<String?>(null) }
+    var editName by remember { mutableStateOf("") }
     var editPrice by remember { mutableStateOf("50.0") }
     var editEmployeePrice by remember { mutableStateOf("22.5") }
     var editCompanyPrice by remember { mutableStateOf("27.5") }
@@ -1499,6 +1501,7 @@ private fun UnmatchedEventsSection(
                                             editingName = null
                                         } else {
                                             editingName = name
+                                            editName = name  // Initialize with original name
                                             editPrice = "50.0"
                                             editEmployeePrice = "22.5"
                                             editCompanyPrice = "27.5"
@@ -1508,7 +1511,7 @@ private fun UnmatchedEventsSection(
                                 ) {
                                     Icon(
                                         if (isEditing) Icons.Default.Close else Icons.Default.Edit,
-                                        contentDescription = if (isEditing) "Cancel" else "Edit prices",
+                                        contentDescription = if (isEditing) "Cancel" else "Edit name and prices",
                                         tint = Color(0xFFFF9800),
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -1518,7 +1521,7 @@ private fun UnmatchedEventsSection(
                                 if (!isEditing) {
                                     IconButton(
                                         onClick = {
-                                            onAddClient(name, 50.0, 22.5, 27.5)
+                                            onAddClient(name, name, 50.0, 22.5, 27.5)
                                         },
                                         modifier = Modifier
                                             .size(32.dp)
@@ -1541,6 +1544,25 @@ private fun UnmatchedEventsSection(
                         // Editable prices row (when editing)
                         if (isEditing) {
                             HorizontalDivider(color = Color(0xFFFF9800).copy(alpha = 0.3f))
+
+                            // Name field
+                            OutlinedTextField(
+                                value = editName,
+                                onValueChange = { editName = it },
+                                label = { Text("Όνομα Πελάτη", fontSize = 10.sp) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Person,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1583,7 +1605,7 @@ private fun UnmatchedEventsSection(
                                         val price = editPrice.toDoubleOrNull() ?: 50.0
                                         val empPrice = editEmployeePrice.toDoubleOrNull() ?: 22.5
                                         val compPrice = editCompanyPrice.toDoubleOrNull() ?: 27.5
-                                        onAddClient(name, price, empPrice, compPrice)
+                                        onAddClient(name, editName.trim(), price, empPrice, compPrice)
                                         editingName = null
                                     },
                                     colors = ButtonDefaults.buttonColors(

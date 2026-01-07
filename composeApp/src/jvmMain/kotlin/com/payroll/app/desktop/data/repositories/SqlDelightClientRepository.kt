@@ -45,7 +45,16 @@ class SqlDelightClientRepository(
             employee_id = client.employeeId,
             pending_payment = if (client.pendingPayment) 1L else 0L
         )
-        queries.lastInsertRowId().executeAsOne()
+        val insertedId = queries.lastInsertRowId().executeAsOne()
+
+        // If INSERT OR IGNORE didn't insert (duplicate), get existing client ID
+        if (insertedId == 0L) {
+            val existingClient = queries.selectClientByEmployeeIdAndName(client.employeeId, client.name)
+                .executeAsOneOrNull()
+            existingClient?.id ?: 0L
+        } else {
+            insertedId
+        }
     }
 
     override suspend fun update(client: Client) = withContext(Dispatchers.IO) {

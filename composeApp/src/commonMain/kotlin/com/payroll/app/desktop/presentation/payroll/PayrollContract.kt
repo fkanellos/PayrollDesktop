@@ -87,7 +87,8 @@ sealed class PayrollAction : UiAction {
 
     // Add unmatched client to database
     data class AddUnmatchedClient(
-        val name: String,
+        val originalEventTitle: String,  // Original event title for tracking
+        val name: String,                 // Edited client name
         val price: Double = 50.0,
         val employeePrice: Double = 22.5,
         val companyPrice: Double = 27.5

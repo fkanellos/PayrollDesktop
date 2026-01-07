@@ -189,9 +189,9 @@ class PayrollViewModel(
                     companyPrice = action.companyPrice,
                     employeeId = currentState.selectedEmployee?.id
                 )
-                // Optimistically add to addedClients set
+                // Optimistically add original event title to addedClients set (for UI filtering)
                 currentState.copy(
-                    addedClients = currentState.addedClients + action.name
+                    addedClients = currentState.addedClients + action.originalEventTitle
                 )
             }
 
