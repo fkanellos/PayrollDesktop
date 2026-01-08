@@ -69,16 +69,22 @@ actual class PayrollRepository(
                 endDate = endDateTime
             )
 
-            // Create supervision config if employee has supervision price
-            val supervisionConfig = if (employee.supervisionPrice > 0.0) {
-                SupervisionConfig(
-                    enabled = true,
-                    price = employee.supervisionPrice,
-                    employeePrice = employee.supervisionPrice * 0.4, // 40% for employee
-                    companyPrice = employee.supervisionPrice * 0.6,  // 60% for company
-                    keywords = listOf("εποπτεία", "supervision", "επόπτευση", "supervise")
+            // Create supervision config
+            // ALWAYS recognize "Εποπτεία" keywords to avoid unmatched events
+            // But only pay if employee has supervisionPrice > 0
+            // Supervision: Company organizes and pays employee for supervision meetings
+            // Employee gets 100% of supervision price (50€), company gets 0€
+            val supervisionConfig = SupervisionConfig(
+                enabled = employee.supervisionPrice > 0.0,   // Only pay if > 0
+                price = employee.supervisionPrice,            // 0€ or 50€
+                employeePrice = employee.supervisionPrice,    // 0€ or 50€ (all to employee)
+                companyPrice = 0.0,                           // Company never receives
+                keywords = listOf(
+                    "Εποπτεία", "εποπτεία", "ΕΠΟΠΤΕΙΑ",
+                    "Supervision", "supervision", "SUPERVISION",
+                    "Εποπτεία γραφείου", "εποπτεία γραφείου"
                 )
-            } else null
+            )
 
             // Calculate payroll using PayrollCalculationService
             val payrollReport = payrollCalculationService.calculatePayroll(

@@ -102,9 +102,7 @@ fun PayrollScreen(
     ) {
         // Header with Sync and Refresh buttons
         PayrollHeader(
-            isSyncing = uiState.isSyncing,
             isLoading = uiState.isLoading,
-            onSyncClick = { viewModel.handleAction(PayrollAction.SyncDatabase) },
             onRefreshClick = { viewModel.handleAction(PayrollAction.RefreshData) }
         )
 
@@ -310,9 +308,7 @@ fun SheetsConfirmationDialog(
 }
 @Composable
 private fun PayrollHeader(
-    isSyncing: Boolean = false,
     isLoading: Boolean = false,
-    onSyncClick: () -> Unit = {},
     onRefreshClick: () -> Unit = {}
 ) {
     Column(
@@ -345,7 +341,7 @@ private fun PayrollHeader(
                 // Refresh Button
                 OutlinedButton(
                     onClick = onRefreshClick,
-                    enabled = !isLoading && !isSyncing,
+                    enabled = !isLoading,
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = PayrollColors.Info
                     ),
@@ -367,34 +363,6 @@ private fun PayrollHeader(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Ανανέωση")
-                    }
-                }
-
-                // Sync Database Button
-                OutlinedButton(
-                    onClick = onSyncClick,
-                    enabled = !isSyncing && !isLoading,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = PayrollColors.Primary
-                    ),
-                    border = BorderStroke(1.dp, PayrollColors.Primary)
-                ) {
-                    if (isSyncing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = PayrollColors.Primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Συγχρονισμός...")
-                    } else {
-                        Icon(
-                            Icons.Default.Sync,
-                            contentDescription = "Sync",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Συγχρονισμός Βάσης")
                     }
                 }
             }
