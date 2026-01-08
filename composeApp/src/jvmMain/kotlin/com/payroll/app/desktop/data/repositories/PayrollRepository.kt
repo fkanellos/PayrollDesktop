@@ -191,7 +191,21 @@ actual class EmployeeRepository(
 
     actual suspend fun updateEmployee(employee: Employee): RepositoryResult<Employee> {
         return try {
+            // Update local database first
             localEmployeeRepo.update(employee)
+
+            // Then update Google Sheets "Employees" tab
+            when (val sheetsResult = googleSheetsService.updateEmployeeInSheet(employee)) {
+                is com.payroll.app.desktop.google.SheetsWriteResult.Success -> {
+                    // Successfully updated in sheets
+                }
+                is com.payroll.app.desktop.google.SheetsWriteResult.Error -> {
+                    // Log error but don't fail the update since local DB was updated
+                    // User can manually sync later if needed
+                    println("⚠️ Warning: Failed to update Google Sheets: ${sheetsResult.message}")
+                }
+            }
+
             RepositoryResult.Success(employee)
         } catch (e: Exception) {
             RepositoryResult.Error(e)

@@ -51,6 +51,18 @@ data class SyncDatabaseResponse(
 )
 
 /**
+ * Response from pushing local database to Google Sheets
+ */
+@Serializable
+data class PushToSheetsResponse(
+    val employeesPushed: Int = 0,
+    val employeesFailed: Int = 0,
+    val clientsPushed: Int = 0,
+    val clientsFailed: Int = 0,
+    val durationMs: Long = 0
+)
+
+/**
  * Response από /api/db/stats
  */
 @Serializable

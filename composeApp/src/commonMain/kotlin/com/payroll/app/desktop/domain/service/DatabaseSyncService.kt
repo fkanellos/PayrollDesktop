@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.domain.service
 
+import com.payroll.app.desktop.domain.models.PushToSheetsResponse
 import com.payroll.app.desktop.domain.models.SyncDatabaseResponse
 
 /**
@@ -7,4 +8,5 @@ import com.payroll.app.desktop.domain.models.SyncDatabaseResponse
  */
 expect class DatabaseSyncService {
     suspend fun syncFromSheets(): Result<SyncDatabaseResponse>
+    suspend fun pushToSheets(): Result<PushToSheetsResponse>
 }

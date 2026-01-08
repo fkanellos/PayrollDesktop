@@ -52,5 +52,5 @@ val localModule = module {
     // Main Repositories (expect/actual)
     single<PayrollRepository> { PayrollRepository(get(), get(), get(), get(), get(), get()) }
     single<EmployeeRepository> { EmployeeRepository(get(), get(), get()) }
-    single<ClientRepository> { ClientRepository(get(), get()) }
+    single<ClientRepository> { ClientRepository(get(), get(), get()) }
 }

@@ -138,6 +138,309 @@ class GoogleSheetsService(
     }
 
     /**
+     * Update an existing client in the employee's sheet tab
+     * Finds the client by name and updates the price values
+     *
+     * @param client The client data to update
+     * @param sheetName The tab name (from employee.sheetName)
+     * @return Result with success/failure info
+     */
+    suspend fun updateClientInSheet(
+        client: Client,
+        sheetName: String
+    ): SheetsWriteResult = withContext(Dispatchers.IO) {
+        val service = sheetsService
+        if (service == null) {
+            return@withContext SheetsWriteResult.Error("Google Sheets service not available")
+        }
+
+        if (sheetName.isBlank()) {
+            return@withContext SheetsWriteResult.Error("Employee sheet name is empty")
+        }
+
+        try {
+            // First, find the row number where this client exists
+            val range = "'$sheetName'!A2:D"  // Skip header row
+
+            val response = RetryUtils.retryWithBackoff {
+                service.spreadsheets().values()
+                    .get(spreadsheetId, range)
+                    .execute()
+            }
+
+            val values = response.getValues()
+
+            if (values.isNullOrEmpty()) {
+                return@withContext SheetsWriteResult.Error("No clients found in sheet '$sheetName'")
+            }
+
+            // Find the row index for this client (by name)
+            val rowIndex = values.indexOfFirst { row ->
+                row.isNotEmpty() && row[0].toString().trim().equals(client.name, ignoreCase = true)
+            }
+
+            if (rowIndex == -1) {
+                return@withContext SheetsWriteResult.Error("Client '${client.name}' not found in sheet '$sheetName'")
+            }
+
+            // Calculate the actual row number in the sheet (adding 2 because: 1 for header, 1 for 0-based index)
+            val actualRowNumber = rowIndex + 2
+
+            // Prepare the row data: Name | Price | Employee Price | Company Price
+            val rowData = listOf(
+                listOf(
+                    client.name,
+                    client.price,
+                    client.employeePrice,
+                    client.companyPrice
+                )
+            )
+
+            val body = ValueRange().setValues(rowData)
+
+            // Update the specific row
+            val updateRange = "'$sheetName'!A$actualRowNumber:D$actualRowNumber"
+
+            Logger.info(TAG, "Updating client in Google Sheets")
+            Logger.debug(TAG, "Spreadsheet: $spreadsheetId")
+            Logger.debug(TAG, "Sheet/Tab: $sheetName")
+            Logger.debug(TAG, "Range: $updateRange")
+            Logger.debug(TAG, "Data: ${client.name} | €${client.price} | €${client.employeePrice} | €${client.companyPrice}")
+
+            val result = RetryUtils.retryWithBackoff {
+                service.spreadsheets().values()
+                    .update(spreadsheetId, updateRange, body)
+                    .setValueInputOption("USER_ENTERED")
+                    .execute()
+            }
+
+            val updatedRange = result.updatedRange ?: updateRange
+            Logger.info(TAG, "Successfully updated: $updatedRange")
+
+            SheetsWriteResult.Success(
+                sheetName = sheetName,
+                updatedRange = updatedRange,
+                rowsAdded = 0  // 0 because we're updating, not adding
+            )
+
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error updating client in Sheets: ${e.statusCode}", e)
+
+            val errorMessage = when (e.statusCode) {
+                404 -> "Sheet tab '$sheetName' not found. Check employee's sheetName setting."
+                403 -> "Permission denied. Check Google Sheets API access."
+                401 -> "Authentication failed. Please re-authenticate."
+                429 -> "Rate limit exceeded. Please try again later."
+                else -> "Google API error (${e.statusCode}): ${e.statusMessage}"
+            }
+
+            SheetsWriteResult.Error(errorMessage)
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error updating client in Google Sheets", e)
+            SheetsWriteResult.Error("Network error: ${e.message}")
+        } catch (e: IllegalArgumentException) {
+            Logger.error(TAG, "Invalid data for Google Sheets", e)
+            SheetsWriteResult.Error("Invalid data: ${e.message}")
+        } catch (e: Exception) {
+            Logger.error(TAG, "Unexpected error updating client in Google Sheets: ${e::class.simpleName}", e)
+            SheetsWriteResult.Error("Unexpected error: ${e.message}")
+        }
+    }
+
+    /**
+     * Update an existing employee in the "Employees" sheet
+     * Finds the employee by name and updates all their data
+     *
+     * @param employee The employee data to update
+     * @return Result with success/failure info
+     */
+    suspend fun updateEmployeeInSheet(
+        employee: com.payroll.app.desktop.domain.models.Employee
+    ): SheetsWriteResult = withContext(Dispatchers.IO) {
+        val service = sheetsService
+        if (service == null) {
+            return@withContext SheetsWriteResult.Error("Google Sheets service not available")
+        }
+
+        try {
+            // First, find the row number where this employee exists
+            val range = "Employees!A2:F"  // Skip header row
+
+            val response = RetryUtils.retryWithBackoff {
+                service.spreadsheets().values()
+                    .get(spreadsheetId, range)
+                    .execute()
+            }
+
+            val values = response.getValues()
+
+            if (values.isNullOrEmpty()) {
+                return@withContext SheetsWriteResult.Error("No employees found in 'Employees' sheet")
+            }
+
+            // Find the row index for this employee (by name)
+            val rowIndex = values.indexOfFirst { row ->
+                row.isNotEmpty() && row[0].toString().trim().equals(employee.name, ignoreCase = true)
+            }
+
+            if (rowIndex == -1) {
+                return@withContext SheetsWriteResult.Error("Employee '${employee.name}' not found in 'Employees' sheet")
+            }
+
+            // Calculate the actual row number in the sheet (adding 2 because: 1 for header, 1 for 0-based index)
+            val actualRowNumber = rowIndex + 2
+
+            // Prepare the row data: Name | Email | Calendar ID | Client Sheet Name | Supervision (€)
+            // Note: Column F (Clients) is usually a formula, so we don't update it
+            val rowData = listOf(
+                listOf(
+                    employee.name,
+                    employee.email,
+                    employee.calendarId,
+                    employee.sheetName,
+                    employee.supervisionPrice
+                    // Omit column F (Clients) - it's usually a formula
+                )
+            )
+
+            val body = ValueRange().setValues(rowData)
+
+            // Update the specific row (A to E only, not F)
+            val updateRange = "Employees!A$actualRowNumber:E$actualRowNumber"
+
+            Logger.info(TAG, "Updating employee in Google Sheets")
+            Logger.debug(TAG, "Spreadsheet: $spreadsheetId")
+            Logger.debug(TAG, "Range: $updateRange")
+            Logger.debug(TAG, "Data: ${employee.name} | ${employee.email} | ${employee.calendarId} | ${employee.sheetName} | €${employee.supervisionPrice}")
+
+            val result = RetryUtils.retryWithBackoff {
+                service.spreadsheets().values()
+                    .update(spreadsheetId, updateRange, body)
+                    .setValueInputOption("USER_ENTERED")
+                    .execute()
+            }
+
+            val updatedRange = result.updatedRange ?: updateRange
+            Logger.info(TAG, "Successfully updated employee: $updatedRange")
+
+            SheetsWriteResult.Success(
+                sheetName = "Employees",
+                updatedRange = updatedRange,
+                rowsAdded = 0  // 0 because we're updating, not adding
+            )
+
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error updating employee in Sheets: ${e.statusCode}", e)
+
+            val errorMessage = when (e.statusCode) {
+                404 -> "Employees sheet not found in spreadsheet."
+                403 -> "Permission denied. Check Google Sheets API access."
+                401 -> "Authentication failed. Please re-authenticate."
+                429 -> "Rate limit exceeded. Please try again later."
+                else -> "Google API error (${e.statusCode}): ${e.statusMessage}"
+            }
+
+            SheetsWriteResult.Error(errorMessage)
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error updating employee in Google Sheets", e)
+            SheetsWriteResult.Error("Network error: ${e.message}")
+        } catch (e: IllegalArgumentException) {
+            Logger.error(TAG, "Invalid data for Google Sheets", e)
+            SheetsWriteResult.Error("Invalid data: ${e.message}")
+        } catch (e: Exception) {
+            Logger.error(TAG, "Unexpected error updating employee in Google Sheets: ${e::class.simpleName}", e)
+            SheetsWriteResult.Error("Unexpected error: ${e.message}")
+        }
+    }
+
+    /**
+     * Batch update multiple clients in a sheet tab at once
+     * Much faster than individual updates - uses Google Sheets batchUpdate API
+     *
+     * @param clients List of clients to update
+     * @param sheetName The tab name (from employee.sheetName)
+     * @return Number of clients successfully updated
+     */
+    suspend fun batchUpdateClientsInSheet(
+        clients: List<Client>,
+        sheetName: String
+    ): Int = withContext(Dispatchers.IO) {
+        val service = sheetsService
+        if (service == null || sheetName.isBlank() || clients.isEmpty()) {
+            return@withContext 0
+        }
+
+        try {
+            // First, read all existing clients to get their row numbers
+            val range = "'$sheetName'!A2:D"
+            val response = RetryUtils.retryWithBackoff {
+                service.spreadsheets().values()
+                    .get(spreadsheetId, range)
+                    .execute()
+            }
+
+            val values = response.getValues() ?: return@withContext 0
+
+            // Create a map of client name -> row number
+            val clientRowMap = mutableMapOf<String, Int>()
+            values.forEachIndexed { index, row ->
+                if (row.isNotEmpty()) {
+                    val name = row[0].toString().trim()
+                    clientRowMap[name.lowercase()] = index + 2 // +2 for header and 0-based index
+                }
+            }
+
+            // Build batch update data
+            val batchData = mutableListOf<com.google.api.services.sheets.v4.model.ValueRange>()
+
+            clients.forEach { client ->
+                val rowNumber = clientRowMap[client.name.lowercase()]
+                if (rowNumber != null) {
+                    val updateRange = "'$sheetName'!A$rowNumber:D$rowNumber"
+                    val rowData = listOf(
+                        listOf(
+                            client.name,
+                            client.price,
+                            client.employeePrice,
+                            client.companyPrice
+                        )
+                    )
+                    batchData.add(
+                        com.google.api.services.sheets.v4.model.ValueRange()
+                            .setRange(updateRange)
+                            .setValues(rowData)
+                    )
+                }
+            }
+
+            if (batchData.isEmpty()) {
+                return@withContext 0
+            }
+
+            Logger.info(TAG, "Batch updating ${batchData.size} clients in sheet: $sheetName")
+
+            // Execute batch update
+            val batchUpdateRequest = com.google.api.services.sheets.v4.model.BatchUpdateValuesRequest()
+                .setValueInputOption("USER_ENTERED")
+                .setData(batchData)
+
+            val result = RetryUtils.retryWithBackoff {
+                service.spreadsheets().values()
+                    .batchUpdate(spreadsheetId, batchUpdateRequest)
+                    .execute()
+            }
+
+            val updatedCells = result.totalUpdatedCells ?: 0
+            Logger.info(TAG, "Batch update complete: ${batchData.size} clients, $updatedCells cells updated")
+
+            batchData.size
+        } catch (e: Exception) {
+            Logger.error(TAG, "Batch update failed for sheet $sheetName", e)
+            0
+        }
+    }
+
+    /**
      * Verify that a sheet tab exists for an employee
      */
     suspend fun verifySheetExists(sheetName: String): Boolean = withContext(Dispatchers.IO) {

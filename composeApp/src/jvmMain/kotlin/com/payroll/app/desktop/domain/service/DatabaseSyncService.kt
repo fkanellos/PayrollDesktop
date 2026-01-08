@@ -5,6 +5,7 @@ import com.payroll.app.desktop.data.repositories.LocalClientRepository
 import com.payroll.app.desktop.data.repositories.LocalEmployeeRepository
 import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.Employee
+import com.payroll.app.desktop.domain.models.PushToSheetsResponse
 import com.payroll.app.desktop.domain.models.SyncDatabaseResponse
 import com.payroll.app.desktop.google.GoogleSheetsService
 import com.payroll.app.desktop.google.SheetsReadResult
@@ -156,6 +157,79 @@ actual class DatabaseSyncService(
             }
         } catch (e: Exception) {
             Logger.error(TAG, "Sync failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Push all local data to Google Sheets
+     * Writes all employees and their clients from local DB to Google Sheets
+     *
+     * Uses BATCH UPDATE for much faster performance!
+     */
+    actual suspend fun pushToSheets(): Result<PushToSheetsResponse> = withContext(Dispatchers.IO) {
+        try {
+            val startTime = System.currentTimeMillis()
+
+            Logger.info(TAG, "🚀 Starting BATCH push to Google Sheets...")
+
+            var employeesPushed = 0
+            var employeesFailed = 0
+            var clientsPushed = 0
+            var clientsFailed = 0
+
+            // Get all employees from local DB
+            val employees = employeeRepository.getAll()
+            Logger.info(TAG, "Found ${employees.size} employees to push")
+
+            for (employee in employees) {
+                // Push employee to "Employees" sheet
+                when (val empResult = sheetsService.updateEmployeeInSheet(employee)) {
+                    is com.payroll.app.desktop.google.SheetsWriteResult.Success -> {
+                        employeesPushed++
+                        Logger.info(TAG, "✓ Pushed employee: ${employee.name}")
+                    }
+                    is com.payroll.app.desktop.google.SheetsWriteResult.Error -> {
+                        employeesFailed++
+                        Logger.warning(TAG, "✗ Failed to push employee ${employee.name}: ${empResult.message}")
+                    }
+                }
+
+                // Small delay between employees
+                kotlinx.coroutines.delay(500)
+
+                // Push all clients for this employee using BATCH UPDATE
+                if (employee.sheetName.isNotBlank()) {
+                    val clients = clientRepository.getByEmployeeId(employee.id)
+                    Logger.info(TAG, "📦 Batch updating ${clients.size} clients for ${employee.name}...")
+
+                    val pushedCount = sheetsService.batchUpdateClientsInSheet(clients, employee.sheetName)
+                    clientsPushed += pushedCount
+                    clientsFailed += (clients.size - pushedCount)
+
+                    Logger.info(TAG, "✓ Pushed ${pushedCount}/${clients.size} clients for ${employee.name}")
+                }
+
+                // Small delay between employees
+                kotlinx.coroutines.delay(500)
+            }
+
+            val durationMs = System.currentTimeMillis() - startTime
+            val response = PushToSheetsResponse(
+                employeesPushed = employeesPushed,
+                employeesFailed = employeesFailed,
+                clientsPushed = clientsPushed,
+                clientsFailed = clientsFailed,
+                durationMs = durationMs
+            )
+
+            Logger.info(TAG, "Push completed in ${durationMs}ms")
+            Logger.info(TAG, "Employees: ✓$employeesPushed / ✗$employeesFailed")
+            Logger.info(TAG, "Clients: ✓$clientsPushed / ✗$clientsFailed")
+
+            Result.success(response)
+        } catch (e: Exception) {
+            Logger.error(TAG, "Push to sheets failed", e)
             Result.failure(e)
         }
     }

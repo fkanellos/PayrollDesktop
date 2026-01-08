@@ -3,6 +3,7 @@ package com.payroll.app.desktop.core.di
 import com.payroll.app.desktop.presentation.client.ClientManagementViewModel
 import com.payroll.app.desktop.presentation.employee.EmployeeManagementViewModel
 import com.payroll.app.desktop.presentation.payroll.PayrollViewModel
+import com.payroll.app.desktop.presentation.settings.SettingsViewModel
 import org.koin.dsl.module
 
 /**
@@ -37,6 +38,13 @@ val viewModelModule = module {
         ClientManagementViewModel(
             payrollRepository = get(),
             clientRepository = get()
+        )
+    }
+
+    // SettingsViewModel - depends on DatabaseSyncService
+    factory {
+        SettingsViewModel(
+            databaseSyncService = get()
         )
     }
 }

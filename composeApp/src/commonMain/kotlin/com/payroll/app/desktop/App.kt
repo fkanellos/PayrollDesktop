@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import com.payroll.app.desktop.ui.screens.ClientManagementScreen
 import com.payroll.app.desktop.ui.screens.EmployeeManagementScreen
 import com.payroll.app.desktop.ui.screens.PayrollScreen
+import com.payroll.app.desktop.ui.screens.SettingsScreen
 import com.payroll.app.desktop.ui.theme.PayrollTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -25,7 +26,8 @@ fun MainNavigation() {
     val tabs = listOf(
         "💰 Μισθοδοσία" to 0,
         "👥 Διαχείριση Πελατών" to 1,
-        "👤 Διαχείριση Εργαζομένων" to 2
+        "👤 Διαχείριση Εργαζομένων" to 2,
+        "⚙️ Ρυθμίσεις" to 3
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -55,6 +57,7 @@ fun MainNavigation() {
                 0 -> PayrollScreen()
                 1 -> ClientManagementScreen()
                 2 -> EmployeeManagementScreen()
+                3 -> SettingsScreen(onNavigateBack = { selectedTabIndex = 0 })
             }
         }
     }

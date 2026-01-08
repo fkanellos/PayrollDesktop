@@ -10,6 +10,7 @@ import com.payroll.app.desktop.google.SheetsReadResult
  */
 actual class ClientRepository(
     private val localClientRepo: LocalClientRepository,
+    private val localEmployeeRepo: LocalEmployeeRepository,
     private val googleSheetsService: GoogleSheetsService
 ) {
     actual suspend fun getByEmployeeId(employeeId: String): RepositoryResult<List<Client>> {
@@ -42,7 +43,24 @@ actual class ClientRepository(
 
     actual suspend fun updateClient(client: Client): RepositoryResult<Client> {
         return try {
+            // Update local database first
             localClientRepo.update(client)
+
+            // Then update Google Sheets
+            val employee = localEmployeeRepo.getById(client.employeeId)
+            if (employee != null && employee.sheetName.isNotBlank()) {
+                when (val sheetsResult = googleSheetsService.updateClientInSheet(client, employee.sheetName)) {
+                    is com.payroll.app.desktop.google.SheetsWriteResult.Success -> {
+                        // Successfully updated in sheets
+                    }
+                    is com.payroll.app.desktop.google.SheetsWriteResult.Error -> {
+                        // Log error but don't fail the update since local DB was updated
+                        // User can manually sync later if needed
+                        println("⚠️ Warning: Failed to update Google Sheets: ${sheetsResult.message}")
+                    }
+                }
+            }
+
             RepositoryResult.Success(client)
         } catch (e: Exception) {
             RepositoryResult.Error(e)
