@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.ui.components.inputs
 
+import com.payroll.app.desktop.core.strings.Strings
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -156,7 +157,7 @@ private fun PayrollTextFieldPreview() {
                     label = "Σφάλμα Παράδειγμα",
                     placeholder = "Αυτό έχει σφάλμα...",
                     isError = true,
-                    supportingText = { Text("Αυτό το πεδίο είναι υποχρεωτικό") }
+                    supportingText = { Text(Strings.Validation.required) }
                 )
             }
         }

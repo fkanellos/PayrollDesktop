@@ -1,6 +1,8 @@
 package com.payroll.app.desktop.ui.screens
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.strings.Strings
+import com.payroll.app.desktop.core.utils.format
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -129,7 +131,7 @@ fun EmployeeListPanel(
     ) {
         // Header
         Text(
-            text = "Εργαζόμενοι",
+            text = Strings.EmployeeManagement.title,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = PayrollColors.Primary,
@@ -143,7 +145,7 @@ fun EmployeeListPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            placeholder = { Text("Αναζήτηση...") },
+            placeholder = { Text(Strings.Common.search) },
             leadingIcon = {
                 Icon(
                     Icons.Default.Search,
@@ -191,7 +193,7 @@ fun EmployeeListPanel(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Δεν βρέθηκαν εργαζόμενοι",
+                    text = Strings.EmployeeManagement.noEmployees,
                     color = PayrollColors.TextSecondary
                 )
             }
@@ -298,7 +300,7 @@ fun ClientTablePanel(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Text(
-                        text = "Πελάτες",
+                        text = Strings.ClientManagement.title,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = PayrollColors.Primary
@@ -346,7 +348,7 @@ fun ClientTablePanel(
                         Icon(Icons.Default.Refresh, contentDescription = "Sync")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isSyncing) "Συγχρονισμός..." else "Συγχρονισμός")
+                    Text(if (isSyncing) Strings.ClientManagement.syncing else Strings.ClientManagement.syncClients)
                 }
 
                 Button(
@@ -356,9 +358,9 @@ fun ClientTablePanel(
                         containerColor = PayrollColors.Primary
                     )
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add")
+                    Icon(Icons.Default.Add, contentDescription = Strings.ClientManagement.addClient)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Προσθήκη Πελάτη")
+                    Text(Strings.ClientManagement.addClient)
                 }
             }
         }
@@ -405,7 +407,7 @@ fun ClientTablePanel(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = PayrollColors.Primary)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Φόρτωση πελατών...", color = PayrollColors.TextSecondary)
+                    Text(Strings.Info.loadingClients, color = PayrollColors.TextSecondary)
                 }
             }
         } else if (employee == null) {
@@ -423,7 +425,7 @@ fun ClientTablePanel(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Επιλέξτε εργαζόμενο",
+                        text = Strings.ClientManagement.selectEmployee,
                         fontSize = 18.sp,
                         color = PayrollColors.TextSecondary
                     )
@@ -475,9 +477,9 @@ fun ClientTablePanel(
                     tint = PayrollColors.Error
                 )
             },
-            title = { Text("Διαγραφή Πελάτη") },
+            title = { Text(Strings.ClientManagement.deleteClient) },
             text = {
-                Text("Είστε σίγουροι ότι θέλετε να διαγράψετε τον πελάτη '${client.name}';")
+                Text(Strings.ClientManagement.confirmDeleteMessage.format(client.name))
             },
             confirmButton = {
                 Button(
@@ -493,7 +495,7 @@ fun ClientTablePanel(
                             color = Color.White
                         )
                     } else {
-                        Text("Διαγραφή")
+                        Text(Strings.Common.delete)
                     }
                 }
             },
@@ -502,7 +504,7 @@ fun ClientTablePanel(
                     onClick = onHideDeleteConfirmation,
                     enabled = !isSaving
                 ) {
-                    Text("Ακύρωση")
+                    Text(Strings.Common.cancel)
                 }
             }
         )
@@ -526,12 +528,12 @@ fun EmptyClientsView() {
                 tint = PayrollColors.TextSecondary
             )
             Text(
-                text = "Δεν υπάρχουν πελάτες",
+                text = Strings.ClientManagement.noClients,
                 fontSize = 18.sp,
                 color = PayrollColors.TextSecondary
             )
             Text(
-                text = "Προσθέστε πελάτες με το κουμπί παραπάνω",
+                text = Strings.ClientManagement.noClientsForEmployee,
                 fontSize = 14.sp,
                 color = PayrollColors.TextSecondary
             )
@@ -684,6 +686,14 @@ fun ClientRow(
     }
 }
 
+// Field name constants
+private object ClientFormFields {
+    const val NAME = "name"
+    const val PRICE = "price"
+    const val EMPLOYEE_PRICE = "employeePrice"
+    const val COMPANY_PRICE = "companyPrice"
+}
+
 @Composable
 fun ClientFormDialog(
     client: Client?,
@@ -715,7 +725,7 @@ fun ClientFormDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text(if (client == null) "Προσθήκη Πελάτη" else "Επεξεργασία Πελάτη") },
+        title = { Text(if (client == null) Strings.DialogTitles.addClient else Strings.DialogTitles.editClient) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -726,14 +736,14 @@ fun ClientFormDialog(
                     value = name,
                     onValueChange = {
                         name = it
-                        validationErrors = validationErrors.filter { e -> e.field != "name" }
+                        validationErrors = validationErrors.filter { e -> e.field != ClientFormFields.NAME }
                     },
-                    label = { Text("Όνομα Πελάτη *") },
+                    label = { Text(Strings.ClientManagement.clientName) },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = validationErrors.any { it.field == "name" },
+                    isError = validationErrors.any { it.field == ClientFormFields.NAME },
                     enabled = !isSaving,
                     supportingText = {
-                        validationErrors.find { it.field == "name" }?.let {
+                        validationErrors.find { it.field == ClientFormFields.NAME }?.let {
                             Text(it.message, color = PayrollColors.Error)
                         }
                     }
@@ -744,14 +754,14 @@ fun ClientFormDialog(
                     value = price,
                     onValueChange = {
                         price = it
-                        validationErrors = validationErrors.filter { e -> e.field != "price" }
+                        validationErrors = validationErrors.filter { e -> e.field != ClientFormFields.PRICE }
                     },
-                    label = { Text("Τιμή Πελάτη (€) *") },
+                    label = { Text(Strings.ClientManagement.clientPrice) },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = validationErrors.any { it.field == "price" },
+                    isError = validationErrors.any { it.field == ClientFormFields.PRICE },
                     enabled = !isSaving,
                     supportingText = {
-                        validationErrors.find { it.field == "price" }?.let {
+                        validationErrors.find { it.field == ClientFormFields.PRICE }?.let {
                             Text(it.message, color = PayrollColors.Error)
                         }
                     }
@@ -764,14 +774,14 @@ fun ClientFormDialog(
                     value = employeePrice,
                     onValueChange = {
                         employeePrice = it
-                        validationErrors = validationErrors.filter { e -> e.field != "employeePrice" }
+                        validationErrors = validationErrors.filter { e -> e.field != ClientFormFields.EMPLOYEE_PRICE }
                     },
-                    label = { Text("Τιμή Εργαζόμενου (€) *") },
+                    label = { Text(Strings.ClientManagement.employeePrice) },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = validationErrors.any { it.field == "employeePrice" },
+                    isError = validationErrors.any { it.field == ClientFormFields.EMPLOYEE_PRICE },
                     enabled = !isSaving,
                     supportingText = {
-                        validationErrors.find { it.field == "employeePrice" }?.let {
+                        validationErrors.find { it.field == ClientFormFields.EMPLOYEE_PRICE }?.let {
                             Text(it.message, color = PayrollColors.Error)
                         }
                     }
@@ -788,14 +798,14 @@ fun ClientFormDialog(
                         onValueChange = {
                             companyPrice = it
                             autoCalculateCompany = false
-                            validationErrors = validationErrors.filter { e -> e.field != "companyPrice" }
+                            validationErrors = validationErrors.filter { e -> e.field != ClientFormFields.COMPANY_PRICE }
                         },
-                        label = { Text("Τιμή Εταιρίας (€) *") },
+                        label = { Text(Strings.ClientManagement.companyPrice) },
                         modifier = Modifier.weight(1f),
-                        isError = validationErrors.any { it.field == "companyPrice" },
+                        isError = validationErrors.any { it.field == ClientFormFields.COMPANY_PRICE },
                         enabled = !isSaving,
                         supportingText = {
-                            validationErrors.find { it.field == "companyPrice" }?.let {
+                            validationErrors.find { it.field == ClientFormFields.COMPANY_PRICE }?.let {
                                 Text(it.message, color = PayrollColors.Error)
                             }
                         }
@@ -904,7 +914,7 @@ fun ClientFormDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(if (isSaving) "Αποθήκευση..." else "Αποθήκευση")
+                Text(if (isSaving) Strings.Common.loading else Strings.Common.save)
             }
         },
         dismissButton = {
@@ -912,7 +922,7 @@ fun ClientFormDialog(
                 onClick = onDismiss,
                 enabled = !isSaving
             ) {
-                Text("Ακύρωση")
+                Text(Strings.Common.cancel)
             }
         }
     )

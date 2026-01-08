@@ -13,6 +13,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.ui.theme.PayrollColors
 import com.payroll.app.desktop.ui.theme.PayrollTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -178,7 +179,7 @@ fun AdminCard(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("+ Προσθήκη")
+                    Text(Strings.Common.add)
                 }
             }
 

@@ -1,9 +1,17 @@
 package com.payroll.app.desktop.domain.validation
 
+import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.core.utils.ValidationUtils
+import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.domain.models.Employee
 
 object EmployeeValidator {
+
+    object EmployeeFormFields {
+        const val NAME = "name"
+        const val EMAIL = "email"
+        const val SUPERVISION_PRICE = "supervisionPrice"
+    }
 
     /**
      * Validates an employee for creation or update
@@ -22,8 +30,8 @@ object EmployeeValidator {
         if (employee.name.isBlank()) {
             errors.add(
                 ValidationError(
-                    field = "name",
-                    message = "Το όνομα εργαζόμενου είναι υποχρεωτικό",
+                    field = EmployeeFormFields.NAME,
+                    message = Strings.Validation.employeeNameRequired,
                     code = ErrorCode.REQUIRED_FIELD
                 )
             )
@@ -35,7 +43,7 @@ object EmployeeValidator {
             if (emailValidation is ValidationUtils.ValidationResult.Error) {
                 errors.add(
                     ValidationError(
-                        field = "email",
+                        field = EmployeeFormFields.EMAIL,
                         message = emailValidation.message,
                         code = ErrorCode.INVALID_FORMAT
                     )
@@ -47,8 +55,8 @@ object EmployeeValidator {
         if (employee.supervisionPrice < 0) {
             errors.add(
                 ValidationError(
-                    field = "supervisionPrice",
-                    message = "Η τιμή supervision δεν μπορεί να είναι αρνητική",
+                    field = EmployeeFormFields.SUPERVISION_PRICE,
+                    message = Strings.Validation.supervisionPriceNegative,
                     code = ErrorCode.NEGATIVE_VALUE
                 )
             )
@@ -58,8 +66,8 @@ object EmployeeValidator {
         if (!employee.supervisionPrice.isFinite()) {
             errors.add(
                 ValidationError(
-                    field = "supervisionPrice",
-                    message = "Η τιμή supervision περιέχει μη έγκυρη τιμή",
+                    field = EmployeeFormFields.SUPERVISION_PRICE,
+                    message = Strings.Validation.supervisionPriceInvalid,
                     code = ErrorCode.INVALID_NUMBER
                 )
             )
@@ -69,8 +77,8 @@ object EmployeeValidator {
         if (employee.supervisionPrice > ValidationUtils.PriceLimits.MAX_SUPERVISION_PRICE) {
             errors.add(
                 ValidationError(
-                    field = "supervisionPrice",
-                    message = "Η τιμή supervision δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SUPERVISION_PRICE}",
+                    field = EmployeeFormFields.SUPERVISION_PRICE,
+                    message = Strings.Validation.supervisionPriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SUPERVISION_PRICE),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -86,8 +94,8 @@ object EmployeeValidator {
             if (isDuplicateEmail) {
                 errors.add(
                     ValidationError(
-                        field = "email",
-                        message = "Υπάρχει ήδη εργαζόμενος με το email '${employee.email}'",
+                        field = EmployeeFormFields.EMAIL,
+                        message = Strings.Validation.employeeEmailDuplicate.format(employee.email),
                         code = ErrorCode.DUPLICATE
                     )
                 )

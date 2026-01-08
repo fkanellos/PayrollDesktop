@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.core.utils
 
+import com.payroll.app.desktop.core.strings.Strings
 import kotlin.math.round
 
 /**
@@ -48,32 +49,32 @@ object ValidationUtils {
      */
     fun validatePrice(
         input: String,
-        fieldName: String = "Τιμή",
+        fieldName: String = Strings.Fields.price,
         minValue: Double = PriceLimits.MIN_PRICE,
         maxValue: Double = PriceLimits.MAX_PRICE
     ): ValidationResult<Double> {
         // Check if empty
         if (input.isBlank()) {
-            return ValidationResult.Error("Το πεδίο '$fieldName' δεν μπορεί να είναι κενό")
+            return ValidationResult.Error(Strings.Validation.fieldEmpty.format(fieldName))
         }
 
         // Try to parse as double
         val value = input.toDoubleOrNull()
-            ?: return ValidationResult.Error("Το πεδίο '$fieldName' πρέπει να είναι αριθμός")
+            ?: return ValidationResult.Error(Strings.Validation.fieldMustBeNumber.format(fieldName))
 
         // Check if negative
         if (value < minValue) {
-            return ValidationResult.Error("Το πεδίο '$fieldName' πρέπει να είναι τουλάχιστον €${minValue}")
+            return ValidationResult.Error(Strings.Validation.fieldMinValue.format(fieldName, minValue))
         }
 
         // Check if too large
         if (value > maxValue) {
-            return ValidationResult.Error("Το πεδίο '$fieldName' δεν μπορεί να υπερβαίνει €${maxValue}")
+            return ValidationResult.Error(Strings.Validation.fieldMaxValue.format(fieldName, maxValue))
         }
 
         // Check if NaN or infinite
         if (!value.isFinite()) {
-            return ValidationResult.Error("Το πεδίο '$fieldName' περιέχει μη έγκυρη τιμή")
+            return ValidationResult.Error(Strings.Validation.fieldInvalidValue.format(fieldName))
         }
 
         return ValidationResult.Success(value)
@@ -85,7 +86,7 @@ object ValidationUtils {
     fun validateSessionPrice(input: String): ValidationResult<Double> {
         return validatePrice(
             input,
-            fieldName = "Τιμή Συνεδρίας",
+            fieldName = Strings.Fields.sessionPrice,
             minValue = PriceLimits.MIN_SESSION_PRICE,
             maxValue = PriceLimits.MAX_SESSION_PRICE
         )
@@ -97,7 +98,7 @@ object ValidationUtils {
     fun validateEmployeePrice(input: String): ValidationResult<Double> {
         return validatePrice(
             input,
-            fieldName = "Τιμή Εργαζομένου",
+            fieldName = Strings.Fields.employeePrice,
             minValue = PriceLimits.MIN_SESSION_PRICE,
             maxValue = PriceLimits.MAX_SESSION_PRICE
         )
@@ -109,7 +110,7 @@ object ValidationUtils {
     fun validateCompanyPrice(input: String): ValidationResult<Double> {
         return validatePrice(
             input,
-            fieldName = "Τιμή Εταιρείας",
+            fieldName = Strings.Fields.companyPrice,
             minValue = PriceLimits.MIN_SESSION_PRICE,
             maxValue = PriceLimits.MAX_SESSION_PRICE
         )
@@ -121,7 +122,7 @@ object ValidationUtils {
     fun validateSupervisionPrice(input: String): ValidationResult<Double> {
         return validatePrice(
             input,
-            fieldName = "Τιμή Supervision",
+            fieldName = Strings.Fields.supervisionPrice,
             minValue = PriceLimits.MIN_SUPERVISION_PRICE,
             maxValue = PriceLimits.MAX_SUPERVISION_PRICE
         )
@@ -146,8 +147,7 @@ object ValidationUtils {
 
         if (kotlin.math.abs(sum - totalPrice) > tolerance) {
             return ValidationResult.Error(
-                "Το άθροισμα των τιμών (€${sum.toFormattedString()}) " +
-                "δεν ταιριάζει με τη συνολική τιμή (€${totalPrice.toFormattedString()})"
+                Strings.Validation.priceSumMismatch.format(sum.toFormattedString(), totalPrice.toFormattedString())
             )
         }
 
@@ -171,12 +171,12 @@ object ValidationUtils {
      */
     fun validateEmail(email: String): ValidationResult<String> {
         if (email.isBlank()) {
-            return ValidationResult.Error("Το email δεν μπορεί να είναι κενό")
+            return ValidationResult.Error(Strings.Validation.emailEmpty)
         }
 
         val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex()
         if (!email.matches(emailRegex)) {
-            return ValidationResult.Error("Μη έγκυρη μορφή email")
+            return ValidationResult.Error(Strings.Validation.emailInvalidFormat)
         }
 
         return ValidationResult.Success(email)
@@ -185,9 +185,9 @@ object ValidationUtils {
     /**
      * Validate non-empty string
      */
-    fun validateNonEmpty(input: String, fieldName: String = "Πεδίο"): ValidationResult<String> {
+    fun validateNonEmpty(input: String, fieldName: String = Strings.Fields.generic): ValidationResult<String> {
         if (input.isBlank()) {
-            return ValidationResult.Error("Το πεδίο '$fieldName' δεν μπορεί να είναι κενό")
+            return ValidationResult.Error(Strings.Validation.fieldEmpty.format(fieldName))
         }
         return ValidationResult.Success(input.trim())
     }

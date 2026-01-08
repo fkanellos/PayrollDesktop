@@ -1,10 +1,19 @@
 package com.payroll.app.desktop.domain.validation
 
+import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.core.utils.ValidationUtils
+import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.domain.models.ClientSimple
 import kotlin.math.abs
 
 object ClientValidator {
+
+    object ClientFormFields {
+        const val NAME = "name"
+        const val PRICE = "price"
+        const val EMPLOYEE_PRICE = "employeePrice"
+        const val COMPANY_PRICE = "companyPrice"
+    }
 
     /**
      * Validates a client for creation or update
@@ -23,8 +32,8 @@ object ClientValidator {
         if (client.name.isBlank()) {
             errors.add(
                 ValidationError(
-                    field = "name",
-                    message = "Το όνομα πελάτη είναι υποχρεωτικό",
+                    field = ClientFormFields.NAME,
+                    message = Strings.Validation.clientNameRequired,
                     code = ErrorCode.REQUIRED_FIELD
                 )
             )
@@ -34,8 +43,8 @@ object ClientValidator {
         if (client.price < 0) {
             errors.add(
                 ValidationError(
-                    field = "price",
-                    message = "Η τιμή πελάτη δεν μπορεί να είναι αρνητική",
+                    field = ClientFormFields.PRICE,
+                    message = Strings.Validation.clientPriceNegative,
                     code = ErrorCode.NEGATIVE_VALUE
                 )
             )
@@ -44,8 +53,8 @@ object ClientValidator {
         if (client.employeePrice < 0) {
             errors.add(
                 ValidationError(
-                    field = "employeePrice",
-                    message = "Η τιμή εργαζόμενου δεν μπορεί να είναι αρνητική",
+                    field = ClientFormFields.EMPLOYEE_PRICE,
+                    message = Strings.Validation.employeePriceNegative,
                     code = ErrorCode.NEGATIVE_VALUE
                 )
             )
@@ -54,8 +63,8 @@ object ClientValidator {
         if (client.companyPrice < 0) {
             errors.add(
                 ValidationError(
-                    field = "companyPrice",
-                    message = "Η τιμή εταιρίας δεν μπορεί να είναι αρνητική",
+                    field = ClientFormFields.COMPANY_PRICE,
+                    message = Strings.Validation.companyPriceNegative,
                     code = ErrorCode.NEGATIVE_VALUE
                 )
             )
@@ -65,8 +74,8 @@ object ClientValidator {
         if (!client.price.isFinite()) {
             errors.add(
                 ValidationError(
-                    field = "price",
-                    message = "Η τιμή πελάτη περιέχει μη έγκυρη τιμή",
+                    field = ClientFormFields.PRICE,
+                    message = Strings.Validation.clientPriceInvalid,
                     code = ErrorCode.INVALID_NUMBER
                 )
             )
@@ -75,8 +84,8 @@ object ClientValidator {
         if (!client.employeePrice.isFinite()) {
             errors.add(
                 ValidationError(
-                    field = "employeePrice",
-                    message = "Η τιμή εργαζόμενου περιέχει μη έγκυρη τιμή",
+                    field = ClientFormFields.EMPLOYEE_PRICE,
+                    message = Strings.Validation.employeePriceInvalid,
                     code = ErrorCode.INVALID_NUMBER
                 )
             )
@@ -85,8 +94,8 @@ object ClientValidator {
         if (!client.companyPrice.isFinite()) {
             errors.add(
                 ValidationError(
-                    field = "companyPrice",
-                    message = "Η τιμή εταιρίας περιέχει μη έγκυρη τιμή",
+                    field = ClientFormFields.COMPANY_PRICE,
+                    message = Strings.Validation.companyPriceInvalid,
                     code = ErrorCode.INVALID_NUMBER
                 )
             )
@@ -96,8 +105,8 @@ object ClientValidator {
         if (client.price > ValidationUtils.PriceLimits.MAX_SESSION_PRICE) {
             errors.add(
                 ValidationError(
-                    field = "price",
-                    message = "Η τιμή πελάτη δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SESSION_PRICE}",
+                    field = ClientFormFields.PRICE,
+                    message = Strings.Validation.clientPriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SESSION_PRICE),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -106,8 +115,8 @@ object ClientValidator {
         if (client.employeePrice > ValidationUtils.PriceLimits.MAX_SESSION_PRICE) {
             errors.add(
                 ValidationError(
-                    field = "employeePrice",
-                    message = "Η τιμή εργαζόμενου δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SESSION_PRICE}",
+                    field = ClientFormFields.EMPLOYEE_PRICE,
+                    message = Strings.Validation.employeePriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SESSION_PRICE),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -116,8 +125,8 @@ object ClientValidator {
         if (client.companyPrice > ValidationUtils.PriceLimits.MAX_SESSION_PRICE) {
             errors.add(
                 ValidationError(
-                    field = "companyPrice",
-                    message = "Η τιμή εταιρίας δεν μπορεί να υπερβαίνει €${ValidationUtils.PriceLimits.MAX_SESSION_PRICE}",
+                    field = ClientFormFields.COMPANY_PRICE,
+                    message = Strings.Validation.companyPriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SESSION_PRICE),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -127,8 +136,8 @@ object ClientValidator {
         if (client.employeePrice > client.price) {
             errors.add(
                 ValidationError(
-                    field = "employeePrice",
-                    message = "Η τιμή εργαζόμενου (${client.employeePrice}€) δεν μπορεί να ξεπερνά την τιμή πελάτη (${client.price}€)",
+                    field = ClientFormFields.EMPLOYEE_PRICE,
+                    message = Strings.Validation.employeePriceExceedsTotal.format(client.employeePrice, client.price),
                     code = ErrorCode.INVALID_VALUE
                 )
             )
@@ -137,8 +146,8 @@ object ClientValidator {
         if (client.companyPrice > client.price) {
             errors.add(
                 ValidationError(
-                    field = "companyPrice",
-                    message = "Η τιμή εταιρίας (${client.companyPrice}€) δεν μπορεί να ξεπερνά την τιμή πελάτη (${client.price}€)",
+                    field = ClientFormFields.COMPANY_PRICE,
+                    message = Strings.Validation.companyPriceExceedsTotal.format(client.companyPrice, client.price),
                     code = ErrorCode.INVALID_VALUE
                 )
             )
@@ -152,10 +161,8 @@ object ClientValidator {
         if (difference > 0.01) {
             errors.add(
                 ValidationError(
-                    field = "companyPrice",
-                    message = "Το άθροισμα τιμής εργαζόμενου (${client.employeePrice}€) και εταιρίας (${client.companyPrice}€) " +
-                            "πρέπει να ισούται με την τιμή πελάτη (${client.price}€). " +
-                            "Τρέχον άθροισμα: ${sum}€",
+                    field = ClientFormFields.COMPANY_PRICE,
+                    message = Strings.Validation.pricesMismatch.format(client.employeePrice, client.companyPrice, client.price, sum),
                     code = ErrorCode.PRICE_MISMATCH
                 )
             )
@@ -171,8 +178,8 @@ object ClientValidator {
         if (isDuplicate) {
             errors.add(
                 ValidationError(
-                    field = "name",
-                    message = "Υπάρχει ήδη πελάτης με το όνομα '${client.name}' για αυτόν τον εργαζόμενο",
+                    field = ClientFormFields.NAME,
+                    message = Strings.Validation.clientNameDuplicate.format(client.name),
                     code = ErrorCode.DUPLICATE
                 )
             )

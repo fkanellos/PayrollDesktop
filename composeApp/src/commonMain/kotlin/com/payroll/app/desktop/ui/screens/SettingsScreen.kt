@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.presentation.settings.SettingsContract.SettingsAction
 import com.payroll.app.desktop.presentation.settings.SettingsContract.SettingsEffect
 import com.payroll.app.desktop.presentation.settings.SettingsViewModel
@@ -56,10 +57,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ρυθμίσεις") },
+                title = { Text(Strings.Settings.title) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Πίσω")
+                        Icon(Icons.Default.ArrowBack, Strings.Common.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -78,14 +79,13 @@ fun SettingsScreen(
         ) {
             // Header
             Text(
-                text = "Συγχρονισμός Δεδομένων",
+                text = Strings.Settings.dataSync,
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary
             )
 
             Text(
-                text = "Χρησιμοποιήστε αυτά τα κουμπιά σε περίπτωση ανάγκης. " +
-                        "Κανονικά, οι αλλαγές συγχρονίζονται αυτόματα.",
+                text = Strings.Settings.dataSyncDescription,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -94,22 +94,20 @@ fun SettingsScreen(
 
             // Sync from Google Sheets
             SyncCard(
-                title = "Συγχρονισμός από Google Sheets",
-                description = "Φόρτωση δεδομένων από το Google Sheet στη βάση δεδομένων. " +
-                        "Ενημερώνει εργαζόμενους και πελάτες με τις τιμές από το sheet.",
+                title = Strings.Settings.syncFromSheets,
+                description = Strings.Settings.syncFromSheetsDesc,
                 icon = Icons.Default.CloudDownload,
-                buttonText = "Συγχρονισμός",
+                buttonText = Strings.Settings.syncFromSheetsButton,
                 isLoading = state.isSyncingFromSheets,
                 onClick = { viewModel.handleAction(SettingsAction.SyncFromGoogleSheets) }
             )
 
             // Push to Google Sheets
             SyncCard(
-                title = "Αποστολή στο Google Sheets",
-                description = "Αποστολή όλων των δεδομένων από τη βάση στο Google Sheet. " +
-                        "Χρήσιμο αν προσθέσατε δεδομένα πριν ενεργοποιηθεί το auto-update.",
+                title = Strings.Settings.pushToSheets,
+                description = Strings.Settings.pushToSheetsDesc,
                 icon = Icons.Default.CloudUpload,
-                buttonText = "Αποστολή",
+                buttonText = Strings.Settings.pushToSheetsButton,
                 isLoading = state.isPushingToSheets,
                 onClick = { viewModel.handleAction(SettingsAction.PushToGoogleSheets) },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -223,7 +221,7 @@ private fun SyncCard(
                     )
                     Spacer(Modifier.width(8.dp))
                 }
-                Text(if (isLoading) "Φόρτωση..." else buttonText)
+                Text(if (isLoading) Strings.Common.loading else buttonText)
             }
         }
     }

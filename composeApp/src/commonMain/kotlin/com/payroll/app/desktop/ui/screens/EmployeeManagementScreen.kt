@@ -1,6 +1,8 @@
 package com.payroll.app.desktop.ui.screens
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.strings.Strings
+import com.payroll.app.desktop.core.utils.format
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -103,7 +105,7 @@ fun EmployeeManagementScreen(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.handleAction(EmployeeManagementAction.SetSearchQuery(it)) },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Αναζήτηση εργαζομένων...") },
+                placeholder = { Text(Strings.Common.search) },
                 leadingIcon = {
                     Icon(
                         Icons.Default.Search,
@@ -168,7 +170,7 @@ fun EmployeeManagementScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = PayrollColors.Primary)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Φόρτωση εργαζομένων...", color = PayrollColors.TextSecondary)
+                        Text(Strings.Info.loadingEmployees, color = PayrollColors.TextSecondary)
                     }
                 }
             } else if (uiState.filteredEmployees.isEmpty()) {
@@ -219,9 +221,9 @@ fun EmployeeManagementScreen(
                     tint = PayrollColors.Error
                 )
             },
-            title = { Text("Διαγραφή Εργαζομένου") },
+            title = { Text(Strings.EmployeeManagement.deleteEmployee) },
             text = {
-                Text("Είστε σίγουροι ότι θέλετε να διαγράψετε τον εργαζόμενο '${employee.name}';\n\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.")
+                Text(Strings.EmployeeManagement.confirmDeleteMessage.format(employee.name))
             },
             confirmButton = {
                 Button(
@@ -237,7 +239,7 @@ fun EmployeeManagementScreen(
                             color = Color.White
                         )
                     } else {
-                        Text("Διαγραφή")
+                        Text(Strings.Common.delete)
                     }
                 }
             },
@@ -246,7 +248,7 @@ fun EmployeeManagementScreen(
                     onClick = { viewModel.handleAction(EmployeeManagementAction.HideDeleteConfirmation) },
                     enabled = !uiState.isSaving
                 ) {
-                    Text("Ακύρωση")
+                    Text(Strings.Common.cancel)
                 }
             }
         )
@@ -267,13 +269,13 @@ private fun EmployeeManagementHeader(
     ) {
         Column {
             Text(
-                text = "Διαχείριση Εργαζομένων",
+                text = Strings.EmployeeManagement.title,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = PayrollColors.Primary
             )
             Text(
-                text = "$employeeCount εργαζόμενοι στο σύστημα",
+                text = Strings.Success.employeesLoaded.format(employeeCount),
                 fontSize = 14.sp,
                 color = PayrollColors.TextSecondary
             )
@@ -284,9 +286,9 @@ private fun EmployeeManagementHeader(
                 onClick = onRefreshClick,
                 enabled = !isLoading
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                Icon(Icons.Default.Refresh, contentDescription = Strings.Common.refresh)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Ανανέωση")
+                Text(Strings.Common.refresh)
             }
 
             Button(
@@ -295,9 +297,9 @@ private fun EmployeeManagementHeader(
                     containerColor = PayrollColors.Primary
                 )
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
+                Icon(Icons.Default.Add, contentDescription = Strings.EmployeeManagement.addEmployee)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Προσθήκη Εργαζομένου")
+                Text(Strings.EmployeeManagement.addEmployee)
             }
         }
     }
@@ -339,9 +341,9 @@ private fun EmptyEmployeesView(
                         containerColor = PayrollColors.Primary
                     )
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add")
+                    Icon(Icons.Default.Add, contentDescription = Strings.EmployeeManagement.addEmployee)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Προσθήκη Εργαζομένου")
+                    Text(Strings.EmployeeManagement.addEmployee)
                 }
             }
         }
@@ -534,7 +536,7 @@ private fun EmployeeFormDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text(if (employee == null) "Προσθήκη Εργαζομένου" else "Επεξεργασία Εργαζομένου") },
+        title = { Text(if (employee == null) Strings.DialogTitles.addEmployee else Strings.DialogTitles.editEmployee) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -547,7 +549,7 @@ private fun EmployeeFormDialog(
                         name = it
                         nameError = null
                     },
-                    label = { Text("Όνομα *") },
+                    label = { Text(Strings.EmployeeManagement.employeeName) },
                     modifier = Modifier.fillMaxWidth(),
                     isError = nameError != null,
                     enabled = !isSaving,
@@ -558,7 +560,7 @@ private fun EmployeeFormDialog(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text(Strings.EmployeeManagement.email) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isSaving
                 )
@@ -570,7 +572,7 @@ private fun EmployeeFormDialog(
                         calendarId = it
                         calendarIdError = null
                     },
-                    label = { Text("Calendar ID *") },
+                    label = { Text(Strings.EmployeeManagement.calendarId) },
                     modifier = Modifier.fillMaxWidth(),
                     isError = calendarIdError != null,
                     enabled = !isSaving,
@@ -581,7 +583,7 @@ private fun EmployeeFormDialog(
                 OutlinedTextField(
                     value = sheetName,
                     onValueChange = { sheetName = it },
-                    label = { Text("Sheet Name") },
+                    label = { Text(Strings.EmployeeManagement.sheetName) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isSaving
                 )
@@ -590,7 +592,7 @@ private fun EmployeeFormDialog(
                 OutlinedTextField(
                     value = supervisionPrice,
                     onValueChange = { supervisionPrice = it },
-                    label = { Text("Τιμή Επίβλεψης (€)") },
+                    label = { Text(Strings.EmployeeManagement.supervisionPrice) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isSaving
                 )
@@ -604,7 +606,7 @@ private fun EmployeeFormDialog(
                     OutlinedTextField(
                         value = color,
                         onValueChange = { color = it },
-                        label = { Text("Χρώμα (HEX)") },
+                        label = { Text(Strings.EmployeeManagement.color) },
                         modifier = Modifier.weight(1f),
                         enabled = !isSaving
                     )
@@ -656,7 +658,7 @@ private fun EmployeeFormDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(if (isSaving) "Αποθήκευση..." else "Αποθήκευση")
+                Text(if (isSaving) Strings.Common.loading else Strings.Common.save)
             }
         },
         dismissButton = {
@@ -664,7 +666,7 @@ private fun EmployeeFormDialog(
                 onClick = onDismiss,
                 enabled = !isSaving
             ) {
-                Text("Ακύρωση")
+                Text(Strings.Common.cancel)
             }
         }
     )

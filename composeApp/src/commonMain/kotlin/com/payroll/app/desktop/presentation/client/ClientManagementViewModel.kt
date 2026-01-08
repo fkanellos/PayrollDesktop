@@ -3,6 +3,8 @@ package com.payroll.app.desktop.presentation.client
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.base.RepositoryResult
+import com.payroll.app.desktop.core.strings.Strings
+import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.data.repositories.ClientRepository
 import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.domain.models.Client
@@ -141,18 +143,18 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast("Φορτώθηκαν ${result.data.size} εργαζόμενοι")
+                            ClientManagementEffect.ShowToast(Strings.Success.employeesLoaded.format(result.data.size))
                         )
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isLoading = false,
-                                error = "Σφάλμα φόρτωσης εργαζομένων: ${result.exception.message}"
+                                error = "${Strings.Errors.loadEmployeesFailed}: ${result.exception.message}"
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError("Σφάλμα φόρτωσης εργαζομένων")
+                            ClientManagementEffect.ShowError(Strings.Errors.loadEmployeesFailed)
                         )
                     }
                 }
@@ -160,7 +162,7 @@ class ClientManagementViewModel(
                 updateState { currentState ->
                     currentState.copy(
                         isLoading = false,
-                        error = e.message ?: "Σφάλμα φόρτωσης"
+                        error = e.message ?: Strings.Errors.loadEmployeesFailed
                     )
                 }
             }
@@ -185,7 +187,7 @@ class ClientManagementViewModel(
                             currentState.copy(
                                 isLoadingClients = false,
                                 clients = emptyList(),
-                                error = "Σφάλμα φόρτωσης πελατών: ${result.exception.message}"
+                                error = "${Strings.Errors.loadClientsFailed}: ${result.exception.message}"
                             )
                         }
                     }
@@ -194,7 +196,7 @@ class ClientManagementViewModel(
                 updateState { currentState ->
                     currentState.copy(
                         isLoadingClients = false,
-                        error = e.message
+                        error = e.message ?: Strings.Errors.loadClientsFailed
                     )
                 }
             }
@@ -215,24 +217,24 @@ class ClientManagementViewModel(
                         }
                         emitSideEffect(ClientManagementEffect.ClientCreated)
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast("Ο πελάτης '${client.name}' δημιουργήθηκε")
+                            ClientManagementEffect.ShowToast(Strings.Success.clientAdded)
                         )
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isSaving = false,
-                                error = "Σφάλμα δημιουργίας: ${result.exception.message}"
+                                error = "${Strings.Errors.saveFailed}: ${result.exception.message}"
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError("Σφάλμα δημιουργίας πελάτη")
+                            ClientManagementEffect.ShowError(Strings.Errors.saveFailed)
                         )
                     }
                 }
             } catch (e: Exception) {
                 updateState { currentState ->
-                    currentState.copy(isSaving = false, error = e.message)
+                    currentState.copy(isSaving = false, error = e.message ?: Strings.Errors.saveFailed)
                 }
             }
         }
@@ -254,24 +256,24 @@ class ClientManagementViewModel(
                         }
                         emitSideEffect(ClientManagementEffect.ClientUpdated)
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast("Ο πελάτης '${client.name}' ενημερώθηκε")
+                            ClientManagementEffect.ShowToast(Strings.Success.clientUpdated)
                         )
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isSaving = false,
-                                error = "Σφάλμα ενημέρωσης: ${result.exception.message}"
+                                error = "${Strings.Errors.saveFailed}: ${result.exception.message}"
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError("Σφάλμα ενημέρωσης πελάτη")
+                            ClientManagementEffect.ShowError(Strings.Errors.saveFailed)
                         )
                     }
                 }
             } catch (e: Exception) {
                 updateState { currentState ->
-                    currentState.copy(isSaving = false, error = e.message)
+                    currentState.copy(isSaving = false, error = e.message ?: Strings.Errors.saveFailed)
                 }
             }
         }
@@ -291,24 +293,24 @@ class ClientManagementViewModel(
                         }
                         emitSideEffect(ClientManagementEffect.ClientDeleted)
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast("Ο πελάτης διαγράφηκε")
+                            ClientManagementEffect.ShowToast(Strings.Success.clientDeleted)
                         )
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isSaving = false,
-                                error = "Σφάλμα διαγραφής: ${result.exception.message}"
+                                error = "${Strings.Errors.deleteFailed}: ${result.exception.message}"
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError("Σφάλμα διαγραφής πελάτη")
+                            ClientManagementEffect.ShowError(Strings.Errors.deleteFailed)
                         )
                     }
                 }
             } catch (e: Exception) {
                 updateState { currentState ->
-                    currentState.copy(isSaving = false, error = e.message)
+                    currentState.copy(isSaving = false, error = e.message ?: Strings.Errors.deleteFailed)
                 }
             }
         }
@@ -320,12 +322,12 @@ class ClientManagementViewModel(
             val employee = currentState.selectedEmployee
 
             if (employee == null) {
-                updateState { it.copy(isSyncing = false, error = "Δεν έχει επιλεγεί εργαζόμενος") }
+                updateState { it.copy(isSyncing = false, error = "No employee selected") }
                 return@launch
             }
 
             if (employee.sheetName.isBlank()) {
-                updateState { it.copy(isSyncing = false, error = "Ο εργαζόμενος δεν έχει ρυθμισμένο sheet name") }
+                updateState { it.copy(isSyncing = false, error = "Employee has no configured sheet name") }
                 return@launch
             }
 
@@ -345,14 +347,14 @@ class ClientManagementViewModel(
 
                         // Build toast message
                         val messageParts = mutableListOf<String>()
-                        if (syncResult.created > 0) messageParts.add("${syncResult.created} νέοι")
-                        if (syncResult.updated > 0) messageParts.add("${syncResult.updated} ενημερώθηκαν")
-                        if (syncResult.unchanged > 0) messageParts.add("${syncResult.unchanged} χωρίς αλλαγές")
+                        if (syncResult.created > 0) messageParts.add("${syncResult.created} new")
+                        if (syncResult.updated > 0) messageParts.add("${syncResult.updated} updated")
+                        if (syncResult.unchanged > 0) messageParts.add("${syncResult.unchanged} unchanged")
 
                         val message = if (messageParts.isEmpty()) {
-                            "Συγχρονισμός ολοκληρώθηκε"
+                            Strings.Success.synced
                         } else {
-                            "Συγχρονισμός: ${messageParts.joinToString(", ")}"
+                            "Sync: ${messageParts.joinToString(", ")}"
                         }
 
                         emitSideEffect(ClientManagementEffect.ShowToast(message))
@@ -361,11 +363,11 @@ class ClientManagementViewModel(
                         updateState { currentState ->
                             currentState.copy(
                                 isSyncing = false,
-                                error = "Σφάλμα συγχρονισμού: ${result.exception.message}"
+                                error = Strings.Errors.syncFailed.format(result.exception.message)
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError("Σφάλμα συγχρονισμού")
+                            ClientManagementEffect.ShowError(Strings.Errors.syncFailed.format(result.exception.message))
                         )
                     }
                 }
@@ -373,11 +375,11 @@ class ClientManagementViewModel(
                 updateState { currentState ->
                     currentState.copy(
                         isSyncing = false,
-                        error = "Σφάλμα συγχρονισμού: ${e.message}"
+                        error = Strings.Errors.syncFailed.format(e.message ?: "Unknown error")
                     )
                 }
                 emitSideEffect(
-                    ClientManagementEffect.ShowError("Σφάλμα συγχρονισμού")
+                    ClientManagementEffect.ShowError(Strings.Errors.syncFailed.format(e.message ?: "Unknown error"))
                 )
             }
         }

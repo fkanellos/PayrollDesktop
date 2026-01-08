@@ -2,6 +2,8 @@ package com.payroll.app.desktop.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.payroll.app.desktop.core.strings.Strings
+import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.domain.service.DatabaseSyncService
 import com.payroll.app.desktop.presentation.settings.SettingsContract.SettingsAction
 import com.payroll.app.desktop.presentation.settings.SettingsContract.SettingsEffect
@@ -41,7 +43,7 @@ class SettingsViewModel(
             _state.value = _state.value.copy(
                 isSyncingFromSheets = true,
                 error = null,
-                lastSyncResult = "Ξεκινά συγχρονισμός από Google Sheets..."
+                lastSyncResult = Strings.Settings.syncStarting
             )
 
             val result = databaseSyncService.syncFromSheets()
@@ -49,12 +51,13 @@ class SettingsViewModel(
             result.fold(
                 onSuccess = { response ->
                     val durationSec = response.durationMs / 1000.0
-                    val message = buildString {
-                        append("📥 Συγχρονισμός ολοκληρώθηκε!\n\n")
-                        append("Εργαζόμενοι: +${response.employeesInserted} / ↻${response.employeesUpdated}\n")
-                        append("Πελάτες: +${response.clientsInserted} / ↻${response.clientsUpdated}\n\n")
-                        append("⏱️ Διάρκεια: ${String.format("%.1f", durationSec)} δευτερόλεπτα")
-                    }
+                    val message = Strings.Success.syncComplete.format(
+                        response.employeesInserted,
+                        response.employeesUpdated,
+                        response.clientsInserted,
+                        response.clientsUpdated,
+                        durationSec
+                    )
 
                     _state.value = _state.value.copy(
                         isSyncingFromSheets = false,
@@ -64,7 +67,7 @@ class SettingsViewModel(
                     _effect.emit(SettingsEffect.SyncComplete(message))
                 },
                 onFailure = { error ->
-                    val errorMsg = "Αποτυχία συγχρονισμού: ${error.message}"
+                    val errorMsg = Strings.Errors.syncFailed.format(error.message ?: "")
                     _state.value = _state.value.copy(
                         isSyncingFromSheets = false,
                         error = errorMsg
@@ -81,7 +84,7 @@ class SettingsViewModel(
             _state.value = _state.value.copy(
                 isPushingToSheets = true,
                 error = null,
-                lastSyncResult = "Ξεκινά push στο Google Sheets..."
+                lastSyncResult = Strings.Settings.pushStarting
             )
 
             val result = databaseSyncService.pushToSheets()
@@ -89,15 +92,20 @@ class SettingsViewModel(
             result.fold(
                 onSuccess = { response ->
                     val durationSec = response.durationMs / 1000.0
-                    val message = buildString {
-                        append("🚀 Push ολοκληρώθηκε!\n\n")
-                        append("Εργαζόμενοι: ✓${response.employeesPushed}")
-                        if (response.employeesFailed > 0) append(" / ✗${response.employeesFailed}")
-                        append("\n")
-                        append("Πελάτες: ✓${response.clientsPushed}")
-                        if (response.clientsFailed > 0) append(" / ✗${response.clientsFailed}")
-                        append("\n\n")
-                        append("⏱️ Διάρκεια: ${String.format("%.1f", durationSec)} δευτερόλεπτα")
+                    val message = if (response.employeesFailed > 0 || response.clientsFailed > 0) {
+                        Strings.Success.pushCompleteWithErrors.format(
+                            response.employeesPushed,
+                            response.employeesFailed,
+                            response.clientsPushed,
+                            response.clientsFailed,
+                            durationSec
+                        )
+                    } else {
+                        Strings.Success.pushComplete.format(
+                            response.employeesPushed,
+                            response.clientsPushed,
+                            durationSec
+                        )
                     }
 
                     _state.value = _state.value.copy(
@@ -108,7 +116,7 @@ class SettingsViewModel(
                     _effect.emit(SettingsEffect.SyncComplete(message))
                 },
                 onFailure = { error ->
-                    val errorMsg = "Αποτυχία push: ${error.message}"
+                    val errorMsg = Strings.Errors.pushFailed.format(error.message ?: "")
                     _state.value = _state.value.copy(
                         isPushingToSheets = false,
                         error = errorMsg

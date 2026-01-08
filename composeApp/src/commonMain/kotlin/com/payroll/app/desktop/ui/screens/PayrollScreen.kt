@@ -3,6 +3,8 @@
 package com.payroll.app.desktop.ui.screens
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.strings.Strings
+import com.payroll.app.desktop.core.utils.format
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -150,7 +152,7 @@ fun PayrollScreen(
     // Date Pickers
     if (uiState.showStartDatePicker) {
         DatePickerDialog(
-            title = "Επιλογή Ημερομηνίας Έναρξης",
+            title = Strings.Payroll.startDate,
             initialDate = uiState.startDate, // 🔧 ΠΡΟΣΘΗΚΗ: Προεπιλεγμένη ημερομηνία
             onDateSelected = { date ->
                 viewModel.handleAction(PayrollAction.SetStartDate(date))
@@ -162,7 +164,7 @@ fun PayrollScreen(
 
     if (uiState.showEndDatePicker) {
         DatePickerDialog(
-            title = "Επιλογή Ημερομηνίας Λήξης",
+            title = Strings.Payroll.endDate,
             initialDate = uiState.endDate, // 🔧 ΠΡΟΣΘΗΚΗ: Προεπιλεγμένη ημερομηνία
             onDateSelected = { date ->
                 viewModel.handleAction(PayrollAction.SetEndDate(date))
@@ -210,7 +212,7 @@ fun PayrollScreen(
     if (uiState.showErrorDialog) {
         uiState.errorDialogMessage?.let { errorMessage ->
             com.payroll.app.desktop.ui.components.ErrorDialog(
-                title = "Σφάλμα",
+                title = Strings.Common.error,
                 message = errorMessage,
                 severity = com.payroll.app.desktop.ui.components.ErrorSeverity.ERROR,
                 onDismiss = { viewModel.handleAction(PayrollAction.DismissErrorDialog) }
@@ -296,12 +298,12 @@ fun SheetsConfirmationDialog(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isUpdate) "Ενημέρωση" else "Αποστολή")
+                Text(if (isUpdate) Strings.Common.save else Strings.Common.save)
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Ακύρωση")
+                Text(Strings.Common.cancel)
             }
         }
     )
@@ -321,13 +323,13 @@ private fun PayrollHeader(
         ) {
             Column {
                 Text(
-                    text = "Σύστημα Μισθοδοσίας",
+                    text = Strings.Payroll.title,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = PayrollColors.Primary
                 )
                 Text(
-                    text = "Αυτοματοποιημένος υπολογισμός μισθών από Google Calendar",
+                    text = Strings.Payroll.subtitle,
                     fontSize = 16.sp,
                     color = PayrollColors.TextSecondary
                 )
@@ -354,15 +356,15 @@ private fun PayrollHeader(
                             color = PayrollColors.Info
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ανανέωση...")
+                        Text(Strings.Common.refreshing)
                     } else {
                         Icon(
                             Icons.Default.Refresh,
-                            contentDescription = "Refresh",
+                            contentDescription = Strings.Common.refresh,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ανανέωση")
+                        Text(Strings.Common.refresh)
                     }
                 }
             }
@@ -381,8 +383,8 @@ private fun PayrollCalculationForm(
     var showCustomDates by remember { mutableStateOf(false) }
 
     PayrollCard(
-        title = "Υπολογισμός Μισθοδοσίας",
-        subtitle = "Επιλέξτε εργαζόμενο και περίοδο"
+        title = Strings.Payroll.title,
+        subtitle = Strings.Payroll.selectEmployee
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -463,7 +465,7 @@ private fun PayrollCalculationForm(
 
             // Calculate Button
             PayrollButton(
-                text = if (uiState.isCalculating) "Υπολογισμός..." else "🔄 Υπολογισμός Μισθοδοσίας",
+                text = if (uiState.isCalculating) Strings.Payroll.calculating else "🔄 ${Strings.Payroll.calculate}",
                 onClick = { onAction(PayrollAction.CalculatePayroll) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = uiState.selectedEmployee != null &&
@@ -567,7 +569,7 @@ fun EnhancedEmployeeDropdown(
     selectedEmployee: Employee?,
     onEmployeeSelected: (Employee) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Εργαζόμενος",
+    label: String = Strings.Payroll.selectEmployee,
     enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -604,7 +606,7 @@ fun EnhancedEmployeeDropdown(
                 placeholder = if (selectedEmployee == null) {
                     {
                         Text(
-                            "Επιλέξτε εργαζόμενο...",
+                            Strings.Payroll.selectEmployeePlaceholder,
                             color = PayrollColors.TextSecondary
                         )
                     }
@@ -645,7 +647,7 @@ fun EnhancedEmployeeDropdown(
                     DropdownMenuItem(
                         text = {
                             Text(
-                                "Δεν βρέθηκαν εργαζόμενοι",
+                                Strings.Payroll.noEmployees,
                                 color = PayrollColors.TextSecondary
                             )
                         },
@@ -789,33 +791,33 @@ private fun PayrollResults(
     ) {
         // Summary Cards
         PayrollCard(
-            title = "Συγκεντρωτικά Αποτελέσματα"
+            title = Strings.Payroll.results
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SummaryCard(
-                    title = "Συνολικές Συνεδρίες",
+                    title = Strings.Payroll.totalSessions,
                     value = result.summary.totalSessions.toString(),
                     modifier = Modifier.weight(1f)
                 )
 
                 SummaryCard(
-                    title = "Συνολικά Έσοδα",
+                    title = Strings.Payroll.totalRevenue,
                     value = result.summary.totalRevenue.toEuroString(),
                     valueColor = PayrollColors.Success,
                     modifier = Modifier.weight(1f)
                 )
 
                 SummaryCard(
-                    title = "Μισθός Εργαζομένου",
+                    title = Strings.Payroll.employeeEarnings,
                     value = result.summary.employeeEarnings.toEuroString(),
                     valueColor = PayrollColors.Info,
                     modifier = Modifier.weight(1f)
                 )
 
                 SummaryCard(
-                    title = "Κέρδη Εταιρίας",
+                    title = Strings.Payroll.companyEarnings,
                     value = result.summary.companyEarnings.toEuroString(),
                     valueColor = PayrollColors.Primary,
                     modifier = Modifier.weight(1f)
@@ -855,7 +857,7 @@ private fun PayrollResults(
 
         // Export Options
         PayrollCard(
-            title = "Εξαγωγή Αποτελεσμάτων"
+            title = Strings.Payroll.export
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -950,14 +952,14 @@ private fun EnhancedClientBreakdownItem(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Sessions: ${client.sessions}",
+                            text = Strings.Payroll.sessionsLabel.format(client.sessions),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = PayrollColors.OnSurface
                         )
                         Text(text = "|", fontSize = 13.sp, color = PayrollColors.DividerColor)
                         Text(
-                            text = "Paid: ${client.totalRevenue.toEuroString()}",
+                            text = Strings.Payroll.paidLabel.format(client.totalRevenue.toEuroString()),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = PayrollColors.Success
@@ -972,19 +974,19 @@ private fun EnhancedClientBreakdownItem(
                         ) {
                             if (client.completedSessions > 0) {
                                 SessionBadge(
-                                    label = "Completed: ${client.completedSessions}",
+                                    label = Strings.Payroll.completedSessionsLabel.format(client.completedSessions),
                                     color = PayrollColors.Success
                                 )
                             }
                             if (client.pendingSessions > 0) {
                                 SessionBadge(
-                                    label = "Pending: ${client.pendingSessions}",
+                                    label = Strings.Payroll.pendingSessionsLabel.format(client.pendingSessions),
                                     color = Color(0xFF64748B)
                                 )
                             }
                             if (client.paidPendingCount > 0) {
                                 SessionBadge(
-                                    label = "Paid prev: ${client.paidPendingCount}",
+                                    label = Strings.Payroll.paidPreviouslyLabel.format(client.paidPendingCount),
                                     color = Color(0xFF10B981)
                                 )
                             }
@@ -1026,7 +1028,10 @@ private fun EnhancedClientBreakdownItem(
                     if (hasPaidPending) {
                         PendingNote(
                             icon = "✅",
-                            text = "Includes ${(client.paidPendingCount * client.pricePerSession).toEuroString()} from ${client.paidPendingCount} pending payment(s)",
+                            text = Strings.Payroll.includesPendingPayments.format(
+                                (client.paidPendingCount * client.pricePerSession).toEuroString(),
+                                client.paidPendingCount
+                            ),
                             color = PayrollColors.Success
                         )
                     }
@@ -1040,7 +1045,7 @@ private fun EnhancedClientBreakdownItem(
                     if (hasUnresolved) {
                         PendingNote(
                             icon = "⚠️",
-                            text = "Client still owes ${client.unresolvedPendingCount} pending payment(s)",
+                            text = Strings.Payroll.clientOwes.format(client.unresolvedPendingCount),
                             color = PayrollColors.Warning
                         )
                     }
@@ -1187,9 +1192,9 @@ private fun SessionItem(
     // Determine status icon and color based on event status and pending flags
     val (statusIcon, statusColor, statusText) = when {
         event.paidForPending -> Triple("✅💰", PayrollColors.Success, "Paid for pending ${event.pendingDate ?: ""}")
-        event.isPending || event.status == "pending_payment" -> Triple("⏳", Color(0xFF64748B), "Pending Payment")
-        event.status == "completed" -> Triple("✅", PayrollColors.Success, "Completed")
-        event.status == "cancelled" -> Triple("❌", PayrollColors.Error, "Cancelled")
+        event.isPending || event.status == "pending_payment" -> Triple("⏳", Color(0xFF64748B), Strings.Payroll.pendingPayment)
+        event.status == "completed" -> Triple("✅", PayrollColors.Success, Strings.Payroll.statusCompleted)
+        event.status == "cancelled" -> Triple("❌", PayrollColors.Error, Strings.Payroll.statusCancelled)
         else -> Triple("📅", PayrollColors.TextSecondary, "")
     }
 
@@ -1335,7 +1340,7 @@ private fun UnmatchedEventsSection(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "All unmatched clients have been added! Re-calculate to see updated results.",
+                    text = Strings.Payroll.allUnmatchedAdded,
                     fontSize = 14.sp,
                     color = Color(0xFF2E7D32)
                 )
@@ -1374,13 +1379,13 @@ private fun UnmatchedEventsSection(
                     )
                     Column {
                         Text(
-                            text = "Unmatched Events (${unmatchedEvents.size})",
+                            text = Strings.Payroll.unmatchedEventsLabel.format(unmatchedEvents.size),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = Color(0xFFE65100)
                         )
                         Text(
-                            text = "Click + to add client with default prices",
+                            text = Strings.Payroll.clickToAddClient,
                             fontSize = 12.sp,
                             color = Color(0xFFFF9800)
                         )
@@ -1395,7 +1400,7 @@ private fun UnmatchedEventsSection(
                     ),
                     border = BorderStroke(1.dp, Color(0xFFFF9800))
                 ) {
-                    Text("Manage Clients")
+                    Text(Strings.ClientManagement.title)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
@@ -1417,14 +1422,14 @@ private fun UnmatchedEventsSection(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Default prices:",
+                        text = Strings.Payroll.defaultPrices,
                         fontSize = 12.sp,
                         color = Color(0xFFE65100),
                         fontWeight = FontWeight.Medium
                     )
-                    Text(text = "Total: €50", fontSize = 12.sp, color = Color(0xFFE65100))
-                    Text(text = "Employee: €22.5", fontSize = 12.sp, color = Color(0xFFE65100))
-                    Text(text = "Company: €27.5", fontSize = 12.sp, color = Color(0xFFE65100))
+                    Text(text = Strings.Payroll.defaultPriceTotal, fontSize = 12.sp, color = Color(0xFFE65100))
+                    Text(text = Strings.Payroll.defaultPriceEmployee, fontSize = 12.sp, color = Color(0xFFE65100))
+                    Text(text = Strings.Payroll.defaultPriceCompany, fontSize = 12.sp, color = Color(0xFFE65100))
                 }
             }
 
@@ -1542,7 +1547,7 @@ private fun UnmatchedEventsSection(
                             OutlinedTextField(
                                 value = editName,
                                 onValueChange = { editName = it },
-                                label = { Text("Όνομα Πελάτη", fontSize = 10.sp) },
+                                label = { Text(Strings.ClientManagement.clientName, fontSize = 10.sp) },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 leadingIcon = {
@@ -1566,7 +1571,7 @@ private fun UnmatchedEventsSection(
                                 OutlinedTextField(
                                     value = editPrice,
                                     onValueChange = { editPrice = it },
-                                    label = { Text("Total €", fontSize = 10.sp) },
+                                    label = { Text(Strings.ClientManagement.clientPrice, fontSize = 10.sp) },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
@@ -1576,7 +1581,7 @@ private fun UnmatchedEventsSection(
                                 OutlinedTextField(
                                     value = editEmployeePrice,
                                     onValueChange = { editEmployeePrice = it },
-                                    label = { Text("Employee €", fontSize = 10.sp) },
+                                    label = { Text(Strings.ClientManagement.employeePrice, fontSize = 10.sp) },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
@@ -1586,7 +1591,7 @@ private fun UnmatchedEventsSection(
                                 OutlinedTextField(
                                     value = editCompanyPrice,
                                     onValueChange = { editCompanyPrice = it },
-                                    label = { Text("Company €", fontSize = 10.sp) },
+                                    label = { Text(Strings.ClientManagement.companyPrice, fontSize = 10.sp) },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
@@ -1611,7 +1616,7 @@ private fun UnmatchedEventsSection(
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Add")
+                                    Text(Strings.Common.save)
                                 }
                             }
                         }
@@ -1700,7 +1705,7 @@ private fun ErrorSection(
             }
 
             TextButton(onClick = onDismiss) {
-                Text("Κλείσιμο")
+                Text(Strings.Common.close)
             }
         }
     }
@@ -1737,12 +1742,12 @@ private fun DatePickerDialog(
                     }
                 }
             ) {
-                Text("Επιλογή")
+                Text(Strings.Common.confirm)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Ακύρωση")
+                Text(Strings.Common.cancel)
             }
         }
     ) {

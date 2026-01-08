@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.ui.components.dialogs
 
+import com.payroll.app.desktop.core.strings.Strings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -191,7 +192,7 @@ fun MatchConfirmationPaginatedDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Όχι")
+                        Text(Strings.Common.no)
                     }
 
                     // Confirm button
@@ -216,7 +217,7 @@ fun MatchConfirmationPaginatedDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ναι")
+                        Text(Strings.Common.yes)
                     }
                 }
             }
@@ -332,7 +333,7 @@ fun MatchConfirmationDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Όχι")
+                        Text(Strings.Common.no)
                     }
 
                     // Confirm button
@@ -349,7 +350,7 @@ fun MatchConfirmationDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ναι")
+                        Text(Strings.Common.yes)
                     }
                 }
             }

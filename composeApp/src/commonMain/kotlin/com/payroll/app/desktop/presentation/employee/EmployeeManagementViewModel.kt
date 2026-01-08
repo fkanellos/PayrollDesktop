@@ -3,6 +3,8 @@ package com.payroll.app.desktop.presentation.employee
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.base.RepositoryResult
+import com.payroll.app.desktop.core.strings.Strings
+import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.data.repositories.EmployeeRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -135,23 +137,23 @@ class EmployeeManagementViewModel(
                                 error = null
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast("Φορτώθηκαν ${employees.size} εργαζόμενοι"))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeesLoaded.format(employees.size)))
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isLoading = false,
-                                error = "Σφάλμα φόρτωσης εργαζομένων: ${result.exception.message}"
+                                error = "${Strings.Errors.loadEmployeesFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("Σφάλμα φόρτωσης: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.loadEmployeesFailed}: ${result.exception.message}"))
                     }
                 }
             } catch (e: Exception) {
                 updateState { currentState ->
                     currentState.copy(
                         isLoading = false,
-                        error = e.message ?: "Σφάλμα φόρτωσης εργαζομένων"
+                        error = e.message ?: Strings.Errors.loadEmployeesFailed
                     )
                 }
             }
@@ -172,24 +174,24 @@ class EmployeeManagementViewModel(
                                 isSaving = false
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast("Ο εργαζόμενος δημιουργήθηκε επιτυχώς"))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeeAdded))
                         emitSideEffect(EmployeeManagementEffect.EmployeeCreated)
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isSaving = false,
-                                error = "Σφάλμα δημιουργίας: ${result.exception.message}"
+                                error = "${Strings.Errors.saveFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("Σφάλμα δημιουργίας: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.saveFailed}: ${result.exception.message}"))
                     }
                 }
             } catch (e: Exception) {
                 updateState { currentState ->
                     currentState.copy(
                         isSaving = false,
-                        error = e.message ?: "Σφάλμα δημιουργίας"
+                        error = e.message ?: Strings.Errors.saveFailed
                     )
                 }
             }
@@ -212,24 +214,24 @@ class EmployeeManagementViewModel(
                                 isSaving = false
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast("Ο εργαζόμενος ενημερώθηκε επιτυχώς"))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeeUpdated))
                         emitSideEffect(EmployeeManagementEffect.EmployeeUpdated)
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
                             currentState.copy(
                                 isSaving = false,
-                                error = "Σφάλμα ενημέρωσης: ${result.exception.message}"
+                                error = "${Strings.Errors.saveFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("Σφάλμα ενημέρωσης: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.saveFailed}: ${result.exception.message}"))
                     }
                 }
             } catch (e: Exception) {
                 updateState { currentState ->
                     currentState.copy(
                         isSaving = false,
-                        error = e.message ?: "Σφάλμα ενημέρωσης"
+                        error = e.message ?: Strings.Errors.saveFailed
                     )
                 }
             }
@@ -251,7 +253,7 @@ class EmployeeManagementViewModel(
                                 isSaving = false
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast("Ο εργαζόμενος διαγράφηκε επιτυχώς"))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeeDeleted))
                         emitSideEffect(EmployeeManagementEffect.EmployeeDeleted)
                     }
                     is RepositoryResult.Error -> {
@@ -259,10 +261,10 @@ class EmployeeManagementViewModel(
                             currentState.copy(
                                 isSaving = false,
                                 deleteConfirmEmployee = null,
-                                error = "Σφάλμα διαγραφής: ${result.exception.message}"
+                                error = "${Strings.Errors.deleteFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("Σφάλμα διαγραφής: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.deleteFailed}: ${result.exception.message}"))
                     }
                 }
             } catch (e: Exception) {
@@ -270,7 +272,7 @@ class EmployeeManagementViewModel(
                     currentState.copy(
                         isSaving = false,
                         deleteConfirmEmployee = null,
-                        error = e.message ?: "Σφάλμα διαγραφής"
+                        error = e.message ?: Strings.Errors.deleteFailed
                     )
                 }
             }

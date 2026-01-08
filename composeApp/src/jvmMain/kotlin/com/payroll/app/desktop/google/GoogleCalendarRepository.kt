@@ -1,6 +1,7 @@
 package com.payroll.app.desktop.google
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.core.utils.RetryUtils
 
 import com.google.api.client.util.DateTime
@@ -170,6 +171,6 @@ class GoogleCalendarRepository(
             .replace("ή", "η").replace("ί", "ι")
             .replace("ό", "ο").replace("ύ", "υ")
             .replace("ώ", "ω")
-        return normalized == "εποπτεια" || normalized == "supervision"
+        return normalized == Strings.Keywords.supervision || normalized == Strings.Keywords.supervisionEnglish
     }
 }
