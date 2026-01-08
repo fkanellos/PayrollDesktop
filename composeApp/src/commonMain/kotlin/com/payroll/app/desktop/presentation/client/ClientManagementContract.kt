@@ -13,6 +13,7 @@ data class ClientManagementState(
     val isLoading: Boolean = false,
     val isLoadingClients: Boolean = false,
     val isSaving: Boolean = false,
+    val isSyncing: Boolean = false,
     val error: String? = null,
     val employees: List<Employee> = emptyList(),
     val selectedEmployee: Employee? = null,
@@ -60,6 +61,9 @@ sealed class ClientManagementAction : UiAction {
     data class UpdateClient(val client: Client) : ClientManagementAction()
     data class DeleteClient(val clientId: Long) : ClientManagementAction()
 
+    // Sync from Google Sheets
+    object SyncClientsFromSheets : ClientManagementAction()
+
     // Error handling
     object ClearError : ClientManagementAction()
 }
@@ -73,4 +77,5 @@ sealed class ClientManagementEffect : UiEffect {
     object ClientCreated : ClientManagementEffect()
     object ClientUpdated : ClientManagementEffect()
     object ClientDeleted : ClientManagementEffect()
+    data class SyncComplete(val created: Int, val updated: Int, val unchanged: Int) : ClientManagementEffect()
 }

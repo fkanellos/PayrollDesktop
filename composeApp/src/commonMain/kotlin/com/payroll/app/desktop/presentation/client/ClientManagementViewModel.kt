@@ -107,6 +107,12 @@ class ClientManagementViewModel(
                 currentState.copy(isSaving = true)
             }
 
+            // Sync from Google Sheets
+            ClientManagementAction.SyncClientsFromSheets -> {
+                syncClientsFromSheets()
+                currentState.copy(isSyncing = true, error = null)
+            }
+
             // Error handling
             ClientManagementAction.ClearError -> {
                 currentState.copy(error = null)
@@ -304,6 +310,75 @@ class ClientManagementViewModel(
                 updateState { currentState ->
                     currentState.copy(isSaving = false, error = e.message)
                 }
+            }
+        }
+    }
+
+    private fun syncClientsFromSheets() {
+        scope.launch {
+            val currentState = _uiState.value
+            val employee = currentState.selectedEmployee
+
+            if (employee == null) {
+                updateState { it.copy(isSyncing = false, error = "Δεν έχει επιλεγεί εργαζόμενος") }
+                return@launch
+            }
+
+            if (employee.sheetName.isBlank()) {
+                updateState { it.copy(isSyncing = false, error = "Ο εργαζόμενος δεν έχει ρυθμισμένο sheet name") }
+                return@launch
+            }
+
+            try {
+                when (val result = clientRepository.syncFromSheets(employee.id, employee.sheetName)) {
+                    is RepositoryResult.Success -> {
+                        val syncResult = result.data
+
+                        // Reload clients to show updated data
+                        loadClientsForEmployee(employee.id)
+
+                        updateState { currentState ->
+                            currentState.copy(isSyncing = false)
+                        }
+
+                        emitSideEffect(ClientManagementEffect.SyncComplete(syncResult.created, syncResult.updated, syncResult.unchanged))
+
+                        // Build toast message
+                        val messageParts = mutableListOf<String>()
+                        if (syncResult.created > 0) messageParts.add("${syncResult.created} νέοι")
+                        if (syncResult.updated > 0) messageParts.add("${syncResult.updated} ενημερώθηκαν")
+                        if (syncResult.unchanged > 0) messageParts.add("${syncResult.unchanged} χωρίς αλλαγές")
+
+                        val message = if (messageParts.isEmpty()) {
+                            "Συγχρονισμός ολοκληρώθηκε"
+                        } else {
+                            "Συγχρονισμός: ${messageParts.joinToString(", ")}"
+                        }
+
+                        emitSideEffect(ClientManagementEffect.ShowToast(message))
+                    }
+                    is RepositoryResult.Error -> {
+                        updateState { currentState ->
+                            currentState.copy(
+                                isSyncing = false,
+                                error = "Σφάλμα συγχρονισμού: ${result.exception.message}"
+                            )
+                        }
+                        emitSideEffect(
+                            ClientManagementEffect.ShowError("Σφάλμα συγχρονισμού")
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                updateState { currentState ->
+                    currentState.copy(
+                        isSyncing = false,
+                        error = "Σφάλμα συγχρονισμού: ${e.message}"
+                    )
+                }
+                emitSideEffect(
+                    ClientManagementEffect.ShowError("Σφάλμα συγχρονισμού")
+                )
             }
         }
     }

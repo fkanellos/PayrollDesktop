@@ -409,11 +409,17 @@ class GoogleSheetsService(
                         return@mapNotNull null
                     }
 
+                    val name = row.getOrNull(0)?.toString()?.trim() ?: ""
+                    // Replace comma with dot for European number format (e.g., "22,5" -> "22.5")
+                    val price = row.getOrNull(1)?.toString()?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
+                    val employeePrice = row.getOrNull(2)?.toString()?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
+                    val companyPrice = row.getOrNull(3)?.toString()?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
+
                     ClientSheetData(
-                        name = row.getOrNull(0)?.toString()?.trim() ?: "",
-                        price = row.getOrNull(1)?.toString()?.toDoubleOrNull() ?: 0.0,
-                        employeePrice = row.getOrNull(2)?.toString()?.toDoubleOrNull() ?: 0.0,
-                        companyPrice = row.getOrNull(3)?.toString()?.toDoubleOrNull() ?: 0.0,
+                        name = name,
+                        price = price,
+                        employeePrice = employeePrice,
+                        companyPrice = companyPrice,
                         employeeId = employeeId
                     )
                 } catch (e: Exception) {

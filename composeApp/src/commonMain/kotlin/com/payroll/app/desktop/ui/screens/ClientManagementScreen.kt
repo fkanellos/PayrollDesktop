@@ -90,10 +90,12 @@ fun ClientManagementScreen(
                 clients = uiState.clients,
                 isLoading = uiState.isLoadingClients,
                 isSaving = uiState.isSaving,
+                isSyncing = uiState.isSyncing,
                 error = uiState.error,
                 showAddDialog = uiState.showAddDialog,
                 editingClient = uiState.editingClient,
                 deleteConfirmClient = uiState.deleteConfirmClient,
+                onSyncClick = { viewModel.handleAction(ClientManagementAction.SyncClientsFromSheets) },
                 onShowAddDialog = { viewModel.handleAction(ClientManagementAction.ShowAddDialog) },
                 onHideAddDialog = { viewModel.handleAction(ClientManagementAction.HideAddDialog) },
                 onShowEditDialog = { viewModel.handleAction(ClientManagementAction.ShowEditDialog(it)) },
@@ -261,10 +263,12 @@ fun ClientTablePanel(
     clients: List<Client>,
     isLoading: Boolean,
     isSaving: Boolean,
+    isSyncing: Boolean,
     error: String?,
     showAddDialog: Boolean,
     editingClient: Client?,
     deleteConfirmClient: Client?,
+    onSyncClick: () -> Unit,
     onShowAddDialog: () -> Unit,
     onHideAddDialog: () -> Unit,
     onShowEditDialog: (Client) -> Unit,
@@ -289,12 +293,31 @@ fun ClientTablePanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(
-                    text = "Πελάτες",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = PayrollColors.Primary
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = "Πελάτες",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PayrollColors.Primary
+                    )
+                    if (employee != null) {
+                        Surface(
+                            color = PayrollColors.Primary.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "${clients.size}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PayrollColors.Primary,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
                 employee?.let {
                     Text(
                         text = "Εμφάνιση πελατών για: ${it.name}",
@@ -305,16 +328,38 @@ fun ClientTablePanel(
                 }
             }
 
-            Button(
-                onClick = onShowAddDialog,
-                enabled = employee != null && !isSaving,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PayrollColors.Primary
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Προσθήκη Πελάτη")
+                OutlinedButton(
+                    onClick = onSyncClick,
+                    enabled = employee != null && !isSaving && !isSyncing,
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    if (isSyncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = PayrollColors.Primary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (isSyncing) "Συγχρονισμός..." else "Συγχρονισμός")
+                }
+
+                Button(
+                    onClick = onShowAddDialog,
+                    enabled = employee != null && !isSaving,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PayrollColors.Primary
+                    )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Προσθήκη Πελάτη")
+                }
             }
         }
 
@@ -656,8 +701,8 @@ fun ClientFormDialog(
     var validationErrors by remember { mutableStateOf<List<ValidationError>>(emptyList()) }
     val clientUseCases = remember { ClientUseCases() }
 
-    // Auto-calculate company price
-    var autoCalculateCompany by remember { mutableStateOf(client == null) }
+    // Auto-calculate company price (enabled by default for both add and edit)
+    var autoCalculateCompany by remember { mutableStateOf(true) }
 
     LaunchedEffect(price, employeePrice) {
         if (autoCalculateCompany && price.isNotBlank() && employeePrice.isNotBlank()) {

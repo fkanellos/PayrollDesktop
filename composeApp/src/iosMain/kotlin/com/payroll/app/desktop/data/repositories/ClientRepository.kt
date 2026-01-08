@@ -26,4 +26,8 @@ actual class ClientRepository {
     actual suspend fun deleteClient(id: Long): RepositoryResult<Boolean> {
         return RepositoryResult.Error(Exception("Not supported on iOS"))
     }
+
+    actual suspend fun syncFromSheets(employeeId: String, sheetName: String): RepositoryResult<SyncResult> {
+        return RepositoryResult.Error(Exception("Not supported on iOS"))
+    }
 }
