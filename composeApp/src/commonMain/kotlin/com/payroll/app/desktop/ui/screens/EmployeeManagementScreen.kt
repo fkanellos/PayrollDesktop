@@ -381,14 +381,7 @@ private fun EmployeesTable(
                 )
                 Text(
                     "Email",
-                    modifier = Modifier.weight(2f),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = PayrollColors.Primary
-                )
-                Text(
-                    "Calendar ID",
-                    modifier = Modifier.weight(2f),
+                    modifier = Modifier.weight(3f),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = PayrollColors.Primary
@@ -477,18 +470,8 @@ private fun EmployeeRow(
         // Email
         Text(
             employee.email.ifBlank { "-" },
-            modifier = Modifier.weight(2f),
+            modifier = Modifier.weight(3f),
             fontSize = 14.sp,
-            color = PayrollColors.TextSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        // Calendar ID
-        Text(
-            employee.calendarId.take(30) + if (employee.calendarId.length > 30) "..." else "",
-            modifier = Modifier.weight(2f),
-            fontSize = 12.sp,
             color = PayrollColors.TextSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

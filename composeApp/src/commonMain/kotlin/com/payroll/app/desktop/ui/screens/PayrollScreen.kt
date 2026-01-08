@@ -72,11 +72,11 @@ fun PayrollScreen(
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 is PayrollEffect.ShowToast -> {
-                    // TODO: Show toast/snackbar
+                    // Toast messages logged for debugging
                     Logger.debug("UI", "Toast: ${effect.message}")
                 }
                 is PayrollEffect.ShowError -> {
-                    // TODO: Show error dialog
+                    // Error dialog handled via state (showErrorDialog)
                     Logger.debug("UI", "Error: ${effect.error}")
                 }
                 // 🆕 Handle confirmation request
@@ -909,9 +909,12 @@ private fun PayrollResults(
 
                 PayrollButton(
                     text = "📧 Αποστολή Email",
-                    onClick = { /* TODO */ },
+                    onClick = {
+                        Logger.info("PayrollScreen", "Email feature not yet implemented")
+                    },
                     modifier = Modifier.weight(1f),
-                    type = PayrollButtonType.SECONDARY
+                    type = PayrollButtonType.SECONDARY,
+                    enabled = false  // Not implemented yet
                 )
             }
         }

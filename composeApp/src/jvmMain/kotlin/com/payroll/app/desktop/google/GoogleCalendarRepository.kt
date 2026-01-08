@@ -1,6 +1,7 @@
 package com.payroll.app.desktop.google
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.utils.RetryUtils
 
 import com.google.api.client.util.DateTime
 import com.google.api.services.calendar.Calendar
@@ -74,14 +75,17 @@ class GoogleCalendarRepository(
                 ).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             )
 
-            val events = service.events().list(calendarId)
-                .setTimeMin(timeMin)
-                .setTimeMax(timeMax)
-                .setOrderBy("startTime")
-                .setSingleEvents(true)
-                .setShowDeleted(false)
-                .setMaxResults(2500)
-                .execute()
+            // Use retry logic for API call
+            val events = RetryUtils.retryWithBackoff {
+                service.events().list(calendarId)
+                    .setTimeMin(timeMin)
+                    .setTimeMax(timeMax)
+                    .setOrderBy("startTime")
+                    .setSingleEvents(true)
+                    .setShowDeleted(false)
+                    .setMaxResults(2500)
+                    .execute()
+            }
 
             events.items?.mapNotNull { event ->
                 try {
@@ -140,7 +144,10 @@ class GoogleCalendarRepository(
         val service = calendarService ?: return@withContext emptyList()
 
         try {
-            val calendarList = service.calendarList().list().execute()
+            // Use retry logic for API call
+            val calendarList = RetryUtils.retryWithBackoff {
+                service.calendarList().list().execute()
+            }
             calendarList.items?.map { calendar ->
                 CalendarInfo(
                     id = calendar.id ?: "",
