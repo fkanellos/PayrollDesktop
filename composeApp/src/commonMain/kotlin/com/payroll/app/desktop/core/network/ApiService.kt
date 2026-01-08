@@ -5,6 +5,7 @@ import com.payroll.app.desktop.domain.models.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -43,6 +44,13 @@ class PayrollApiService(
                 ignoreUnknownKeys = true
                 isLenient = true
             })
+        }
+
+        // Timeout configuration to prevent hanging requests
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000  // 30 seconds for entire request
+            connectTimeoutMillis = 10_000  // 10 seconds to establish connection
+            socketTimeoutMillis = 30_000   // 30 seconds between packets
         }
     }
 

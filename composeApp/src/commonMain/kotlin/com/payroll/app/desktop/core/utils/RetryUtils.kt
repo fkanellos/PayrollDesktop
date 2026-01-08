@@ -53,8 +53,31 @@ object RetryUtils {
 
     /**
      * Determine if an error is retryable
+     * Uses exception type first, then falls back to message content
      */
     private fun isRetryableError(throwable: Throwable): Boolean {
+        // Check exception class name for common retryable types
+        val exceptionType = throwable::class.simpleName?.lowercase() ?: ""
+
+        // Check by exception type first (more reliable)
+        when {
+            // Network/IO exceptions - retryable
+            exceptionType.contains("timeout") -> return true
+            exceptionType.contains("socket") -> return true
+            exceptionType.contains("connect") -> return true
+            exceptionType.contains("ioexception") -> return true
+            exceptionType.contains("unknownhost") -> return true
+
+            // Validation/Illegal state - NOT retryable
+            exceptionType.contains("illegalargument") -> return false
+            exceptionType.contains("illegalstate") -> return false
+            exceptionType.contains("nullpointer") -> return false
+
+            // Database exceptions - NOT retryable
+            exceptionType.contains("sql") -> return false
+        }
+
+        // Fallback to message content (less reliable but catches specific cases)
         val message = throwable.message?.lowercase() ?: ""
 
         return when {
@@ -80,7 +103,7 @@ object RetryUtils {
             message.contains("constraint") -> false
             message.contains("unique") -> false
 
-            // Default: retry
+            // Default: retry for unknown errors
             else -> true
         }
     }

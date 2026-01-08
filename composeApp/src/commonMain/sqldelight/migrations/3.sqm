@@ -1,0 +1,11 @@
+-- Migration 3: Add additional indexes for performance
+-- Add indexes on frequently queried columns
+
+-- Index on ClientEntity.name for faster client lookups by name
+CREATE INDEX IF NOT EXISTS idx_client_name ON ClientEntity(name);
+
+-- Index on EmployeeEntity.email for faster employee lookups by email
+CREATE INDEX IF NOT EXISTS idx_employee_email ON EmployeeEntity(email);
+
+-- Index on MatchConfirmationEntity.created_at for faster sorting by date
+CREATE INDEX IF NOT EXISTS idx_match_confirmation_created_at ON MatchConfirmationEntity(created_at DESC);

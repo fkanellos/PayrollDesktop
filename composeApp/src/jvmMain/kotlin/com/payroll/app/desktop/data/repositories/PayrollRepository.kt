@@ -101,6 +101,18 @@ actual class PayrollRepository(
 
     actual suspend fun createClient(client: Client): RepositoryResult<Client> {
         return try {
+            // Validate client data before inserting
+            val existingClients = localClientRepo.getByEmployeeId(client.employeeId)
+            val validationResult = com.payroll.app.desktop.domain.validation.ClientValidator.validateClient(
+                client.toClientSimple(),
+                existingClients.map { it.toClientSimple() }
+            )
+
+            if (validationResult is com.payroll.app.desktop.domain.validation.ValidationResult.Invalid) {
+                val errorMessage = validationResult.errors.joinToString(", ") { it.message }
+                return RepositoryResult.Error(IllegalArgumentException("Validation failed: $errorMessage"))
+            }
+
             // Insert to local database
             val clientId = localClientRepo.insert(client)
             val createdClient = client.copy(id = clientId)
@@ -116,6 +128,15 @@ actual class PayrollRepository(
             RepositoryResult.Error(e)
         }
     }
+
+    private fun Client.toClientSimple() = com.payroll.app.desktop.domain.models.ClientSimple(
+        id = this.id.toString(),
+        name = this.name,
+        price = this.price,
+        employeePrice = this.employeePrice,
+        companyPrice = this.companyPrice,
+        employeeId = this.employeeId
+    )
 }
 
 /**

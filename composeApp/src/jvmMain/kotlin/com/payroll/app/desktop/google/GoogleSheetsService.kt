@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.google
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.model.ValueRange
 import com.payroll.app.desktop.core.config.AppConfig
@@ -8,6 +9,7 @@ import com.payroll.app.desktop.core.utils.RetryUtils
 import com.payroll.app.desktop.domain.models.Client
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 /**
  * Google Sheets Service for writing client data
@@ -36,8 +38,12 @@ class GoogleSheetsService(
     init {
         try {
             sheetsService = credentialProvider.getSheetsService()
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error initializing Sheets: ${e.statusCode} - ${e.statusMessage}", e)
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error initializing Google Sheets", e)
         } catch (e: Exception) {
-            Logger.error(TAG, "Failed to initialize Google Sheets", e)
+            Logger.error(TAG, "Unexpected error initializing Google Sheets: ${e::class.simpleName}", e)
         }
     }
 
@@ -106,22 +112,28 @@ class GoogleSheetsService(
                 rowsAdded = 1
             )
 
-        } catch (e: Exception) {
-            Logger.error(TAG, "Error writing to Google Sheets", e)
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error writing to Sheets: ${e.statusCode}", e)
 
-            // Provide helpful error messages
-            val errorMessage = when {
-                e.message?.contains("404") == true ->
-                    "Sheet tab '$sheetName' not found. Check employee's sheetName setting."
-                e.message?.contains("403") == true ->
-                    "Permission denied. Check Google Sheets API access."
-                e.message?.contains("401") == true ->
-                    "Authentication failed. Please re-authenticate."
-                else ->
-                    "Failed to write to sheet: ${e.message}"
+            // Provide helpful error messages based on HTTP status code
+            val errorMessage = when (e.statusCode) {
+                404 -> "Sheet tab '$sheetName' not found. Check employee's sheetName setting."
+                403 -> "Permission denied. Check Google Sheets API access."
+                401 -> "Authentication failed. Please re-authenticate."
+                429 -> "Rate limit exceeded. Please try again later."
+                else -> "Google API error (${e.statusCode}): ${e.statusMessage}"
             }
 
             SheetsWriteResult.Error(errorMessage)
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error writing to Google Sheets", e)
+            SheetsWriteResult.Error("Network error: ${e.message}")
+        } catch (e: IllegalArgumentException) {
+            Logger.error(TAG, "Invalid data for Google Sheets", e)
+            SheetsWriteResult.Error("Invalid data: ${e.message}")
+        } catch (e: Exception) {
+            Logger.error(TAG, "Unexpected error writing to Google Sheets: ${e::class.simpleName}", e)
+            SheetsWriteResult.Error("Unexpected error: ${e.message}")
         }
     }
 
@@ -143,8 +155,14 @@ class GoogleSheetsService(
             Logger.info(TAG, "Available sheets: $sheetNames")
 
             sheetNames.contains(sheetName)
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error checking sheet: ${e.statusCode}", e)
+            false
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error checking sheet existence", e)
+            false
         } catch (e: Exception) {
-            Logger.error(TAG, "Error checking sheet existence", e)
+            Logger.error(TAG, "Unexpected error checking sheet: ${e::class.simpleName}", e)
             false
         }
     }
@@ -163,8 +181,14 @@ class GoogleSheetsService(
             }
 
             spreadsheet.sheets?.mapNotNull { it.properties?.title } ?: emptyList()
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error getting sheet names: ${e.statusCode}", e)
+            emptyList()
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error getting sheet names", e)
+            emptyList()
         } catch (e: Exception) {
-            Logger.error(TAG, "Error getting sheet names", e)
+            Logger.error(TAG, "Unexpected error getting sheet names: ${e::class.simpleName}", e)
             emptyList()
         }
     }
@@ -234,8 +258,14 @@ class GoogleSheetsService(
             Logger.info(TAG, "Added headers to sheet: $sheetName")
 
             true
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error creating sheet '$sheetName': ${e.statusCode}", e)
+            false
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error creating sheet tab", e)
+            false
         } catch (e: Exception) {
-            Logger.error(TAG, "Error creating sheet tab '$sheetName'", e)
+            Logger.error(TAG, "Unexpected error creating sheet '$sheetName': ${e::class.simpleName}", e)
             false
         }
     }
@@ -263,13 +293,20 @@ class GoogleSheetsService(
                         .execute()
                 }
                 Logger.info(TAG, "Spreadsheet found: ${metadata.properties?.title}")
-            } catch (e: Exception) {
+            } catch (e: GoogleJsonResponseException) {
                 Logger.error(TAG, "Failed to access spreadsheet", e)
-                if (e.message?.contains("404") == true) {
+                if (e.statusCode == 404) {
                     return@withContext SheetsReadResult.Error(
                         "Spreadsheet not found. Please verify spreadsheetId: $spreadsheetId"
                     )
-                } else if (e.message?.contains("This operation is not supported") == true) {
+                }
+                throw e
+            } catch (e: IOException) {
+                Logger.error(TAG, "Network error accessing spreadsheet", e)
+                return@withContext SheetsReadResult.Error("Network error: ${e.message}")
+            } catch (e: Exception) {
+                Logger.error(TAG, "Error accessing spreadsheet: ${e::class.simpleName}", e)
+                if (e.message?.contains("This operation is not supported") == true) {
                     return@withContext SheetsReadResult.Error(
                         "This appears to be a Google Drive Excel file, not a native Google Sheet. " +
                         "Please convert to Google Sheets format or use the correct spreadsheet ID."
@@ -317,8 +354,14 @@ class GoogleSheetsService(
             Logger.info(TAG, "Read ${employees.size} employees from sheet")
             SheetsReadResult.Success(employees)
 
+        } catch (e: GoogleJsonResponseException) {
+            Logger.error(TAG, "Google API error reading employees: ${e.statusCode}", e)
+            SheetsReadResult.Error("Google API error (${e.statusCode}): ${e.statusMessage}")
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error reading employees", e)
+            SheetsReadResult.Error("Network error: ${e.message}")
         } catch (e: Exception) {
-            Logger.error(TAG, "Error reading employees", e)
+            Logger.error(TAG, "Unexpected error reading employees: ${e::class.simpleName}", e)
             SheetsReadResult.Error("Failed to read employees: ${e.message}")
         }
     }
@@ -382,16 +425,21 @@ class GoogleSheetsService(
             Logger.info(TAG, "Read ${clients.size} clients from sheet tab: $sheetName")
             SheetsReadResult.Success(clients)
 
-        } catch (e: Exception) {
-            // If sheet tab doesn't exist, that's okay - employee just has no clients yet
-            if (e.message?.contains("Unable to parse range") == true ||
-                e.message?.contains("not found") == true) {
+        } catch (e: GoogleJsonResponseException) {
+            // If sheet tab doesn't exist (404), that's okay - employee just has no clients yet
+            if (e.statusCode == 404) {
                 Logger.info(TAG, "Sheet tab '$sheetName' not found (employee has no clients yet)")
                 return@withContext SheetsReadResult.Success(emptyList())
             }
 
-            Logger.error(TAG, "Error reading clients from $sheetName", e)
-            SheetsReadResult.Error("Failed to read clients from $sheetName: ${e.message}")
+            Logger.error(TAG, "Google API error reading clients from $sheetName: ${e.statusCode}", e)
+            SheetsReadResult.Error("Google API error (${e.statusCode}): ${e.statusMessage}")
+        } catch (e: IOException) {
+            Logger.error(TAG, "Network error reading clients from $sheetName", e)
+            SheetsReadResult.Error("Network error: ${e.message}")
+        } catch (e: Exception) {
+            Logger.error(TAG, "Unexpected error reading clients from $sheetName: ${e::class.simpleName}", e)
+            SheetsReadResult.Error("Failed to read clients: ${e.message}")
         }
     }
 }

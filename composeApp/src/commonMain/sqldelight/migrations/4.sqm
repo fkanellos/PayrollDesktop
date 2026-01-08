@@ -1,0 +1,70 @@
+-- Migration 4: Add CHECK constraints for data integrity
+-- SQLite doesn't support adding constraints to existing tables, so we recreate them
+
+-- ============================================================
+-- Step 1: Recreate ClientEntity with CHECK constraints
+-- ============================================================
+
+-- Drop existing indexes first
+DROP INDEX IF EXISTS idx_client_employee_id;
+DROP INDEX IF EXISTS idx_client_name;
+
+-- Create new table with constraints
+CREATE TABLE ClientEntity_new (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+    price REAL NOT NULL DEFAULT 0.0 CHECK(price >= 0.0),
+    employee_price REAL NOT NULL DEFAULT 0.0 CHECK(employee_price >= 0.0),
+    company_price REAL NOT NULL DEFAULT 0.0 CHECK(company_price >= 0.0),
+    employee_id TEXT NOT NULL,
+    pending_payment INTEGER NOT NULL DEFAULT 0 CHECK(pending_payment IN (0, 1)),
+    FOREIGN KEY (employee_id) REFERENCES EmployeeEntity(id) ON DELETE CASCADE,
+    UNIQUE(employee_id, name)
+);
+
+-- Copy data from old table
+INSERT INTO ClientEntity_new (id, name, price, employee_price, company_price, employee_id, pending_payment)
+SELECT id, name, price, employee_price, company_price, employee_id, pending_payment
+FROM ClientEntity;
+
+-- Drop old table
+DROP TABLE ClientEntity;
+
+-- Rename new table
+ALTER TABLE ClientEntity_new RENAME TO ClientEntity;
+
+-- Recreate indexes
+CREATE INDEX idx_client_employee_id ON ClientEntity(employee_id);
+CREATE INDEX idx_client_name ON ClientEntity(name);
+
+-- ============================================================
+-- Step 2: Recreate EmployeeEntity with CHECK constraints
+-- ============================================================
+
+-- Drop existing index
+DROP INDEX IF EXISTS idx_employee_email;
+
+-- Create new table with constraints
+CREATE TABLE EmployeeEntity_new (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+    email TEXT NOT NULL DEFAULT '',
+    calendar_id TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '',
+    sheet_name TEXT NOT NULL DEFAULT '',
+    supervision_price REAL NOT NULL DEFAULT 0.0 CHECK(supervision_price >= 0.0)
+);
+
+-- Copy data from old table
+INSERT INTO EmployeeEntity_new (id, name, email, calendar_id, color, sheet_name, supervision_price)
+SELECT id, name, email, calendar_id, color, sheet_name, supervision_price
+FROM EmployeeEntity;
+
+-- Drop old table
+DROP TABLE EmployeeEntity;
+
+-- Rename new table
+ALTER TABLE EmployeeEntity_new RENAME TO EmployeeEntity;
+
+-- Recreate index
+CREATE INDEX idx_employee_email ON EmployeeEntity(email);
