@@ -219,6 +219,10 @@ class PayrollViewModel(
             PayrollAction.ClearError -> {
                 currentState.copy(error = null)
             }
+
+            PayrollAction.DismissErrorDialog -> {
+                currentState.copy(showErrorDialog = false, errorDialogMessage = null)
+            }
         }
     }
 
@@ -653,6 +657,16 @@ class PayrollViewModel(
     private fun emitSideEffect(effect: PayrollEffect) {
         viewModelScope.launch {
             _sideEffect.emit(effect)
+
+            // Update state for error dialog
+            if (effect is PayrollEffect.ShowError) {
+                updateState { currentState ->
+                    currentState.copy(
+                        showErrorDialog = true,
+                        errorDialogMessage = effect.error
+                    )
+                }
+            }
         }
     }
 

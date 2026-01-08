@@ -29,7 +29,10 @@ data class PayrollState(
     // Added unmatched clients (names added during this session)
     val addedClients: Set<String> = emptySet(),
     // Uncertain matches needing user confirmation
-    val uncertainMatches: List<UncertainMatch> = emptyList()
+    val uncertainMatches: List<UncertainMatch> = emptyList(),
+    // Error Dialog state
+    val showErrorDialog: Boolean = false,
+    val errorDialogMessage: String? = null
 ) : UiState
 
 /**
@@ -101,6 +104,7 @@ sealed class PayrollAction : UiAction {
 
     // Error handling
     object ClearError : PayrollAction()
+    object DismissErrorDialog : PayrollAction()
 }
 
 /**

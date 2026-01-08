@@ -4,11 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.NavigateBefore
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.NavigateBefore
-import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,7 +66,7 @@ fun MatchConfirmationPaginatedDialog(
                             enabled = currentIndex > 0
                         ) {
                             Icon(
-                                imageVector = Icons.Default.NavigateBefore,
+                                imageVector = Icons.AutoMirrored.Filled.NavigateBefore,
                                 contentDescription = "Προηγούμενο"
                             )
                         }
@@ -91,7 +91,7 @@ fun MatchConfirmationPaginatedDialog(
                             enabled = currentIndex < uncertainMatches.size - 1
                         ) {
                             Icon(
-                                imageVector = Icons.Default.NavigateNext,
+                                imageVector = Icons.AutoMirrored.Filled.NavigateNext,
                                 contentDescription = "Επόμενο"
                             )
                         }
@@ -102,7 +102,7 @@ fun MatchConfirmationPaginatedDialog(
 
                 // Header Icon
                 Icon(
-                    imageVector = Icons.Default.HelpOutline,
+                    imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                     contentDescription = "Επιβεβαίωση",
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -251,7 +251,7 @@ fun MatchConfirmationDialog(
             ) {
                 // Header Icon
                 Icon(
-                    imageVector = Icons.Default.HelpOutline,
+                    imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                     contentDescription = "Επιβεβαίωση",
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary

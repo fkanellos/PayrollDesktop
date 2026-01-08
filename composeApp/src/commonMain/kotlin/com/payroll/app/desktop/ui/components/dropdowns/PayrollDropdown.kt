@@ -55,7 +55,7 @@ fun <T> PayrollDropdown(
         ) {
             OutlinedTextField(
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
                 readOnly = true,
                 value = selectedItem?.let(displayText) ?: "",

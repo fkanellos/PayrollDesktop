@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -205,6 +206,18 @@ fun PayrollScreen(
                 viewModel.handleAction(PayrollAction.ClearUncertainMatches)
             }
         )
+    }
+
+    // Error Dialog
+    if (uiState.showErrorDialog) {
+        uiState.errorDialogMessage?.let { errorMessage ->
+            com.payroll.app.desktop.ui.components.ErrorDialog(
+                title = "Σφάλμα",
+                message = errorMessage,
+                severity = com.payroll.app.desktop.ui.components.ErrorSeverity.ERROR,
+                onDismiss = { viewModel.handleAction(PayrollAction.DismissErrorDialog) }
+            )
+        }
     }
 }
 /**
@@ -615,7 +628,7 @@ fun EnhancedEmployeeDropdown(
         ) {
             OutlinedTextField(
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
                 readOnly = true,
                 value = displayValue,
@@ -1414,7 +1427,7 @@ private fun UnmatchedEventsSection(
                     Text("Manage Clients")
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
-                        Icons.Default.ArrowForward,
+                        Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1854,7 +1867,7 @@ fun PredefinedPeriodDropdown(
         ) {
             OutlinedTextField(
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
                 readOnly = true,
                 value = displayText,
