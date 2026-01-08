@@ -1,5 +1,6 @@
 package com.payroll.app.desktop
 
+import com.payroll.app.desktop.core.config.ConfigLoader
 import com.payroll.app.desktop.google.GoogleCredentialProvider
 import java.io.File
 import kotlin.system.exitProcess
@@ -29,7 +30,8 @@ fun main() {
     println()
 
     try {
-        val credentialProvider = GoogleCredentialProvider()
+        val appConfig = ConfigLoader().loadConfig()
+        val credentialProvider = GoogleCredentialProvider(appConfig)
         val success = credentialProvider.importCredentials(credentialsFile)
 
         if (success) {

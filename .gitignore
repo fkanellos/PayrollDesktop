@@ -21,5 +21,10 @@ node_modules/
 # Google API credentials (sensitive)
 **/credentials.json
 **/tokens/
+
+# Application configuration (contains sensitive IDs)
+app.config
+
+# Development files
 .claude/
 project-structure.txt

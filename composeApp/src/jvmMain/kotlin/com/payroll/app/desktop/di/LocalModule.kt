@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.di
 
+import com.payroll.app.desktop.core.config.AppConfig
+import com.payroll.app.desktop.core.config.ConfigLoader
 import com.payroll.app.desktop.core.export.ExportService
 import com.payroll.app.desktop.data.repositories.*
 import com.payroll.app.desktop.database.DriverFactory
@@ -22,6 +24,9 @@ import org.koin.dsl.module
  */
 val localModule = module {
 
+    // Configuration
+    single { ConfigLoader().loadConfig() }
+
     // Database
     single { DriverFactory.createDriver() }
     single { PayrollDatabase(get()) }
@@ -34,9 +39,9 @@ val localModule = module {
     }
 
     // Google APIs
-    single { GoogleCredentialProvider() }
+    single { GoogleCredentialProvider(get()) }
     single<CalendarRepository> { GoogleCalendarRepository(get()) }  // READ ONLY!
-    single { GoogleSheetsService(get()) }  // WRITE allowed
+    single { GoogleSheetsService(get(), get()) }  // WRITE allowed
 
     // Services
     single { ClientMatchingService() }

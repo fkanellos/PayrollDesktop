@@ -14,6 +14,7 @@ import com.google.api.services.calendar.CalendarScopes
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
+import com.payroll.app.desktop.core.config.AppConfig
 import com.payroll.app.desktop.core.logging.Logger
 import java.io.File
 import java.io.InputStreamReader
@@ -40,7 +41,9 @@ import java.io.InputStreamReader
  *    - Access tokens auto-refresh every ~1 hour
  *    - Refresh tokens last 6 months (if used within that period)
  */
-class GoogleCredentialProvider {
+class GoogleCredentialProvider(
+    private val appConfig: AppConfig
+) {
 
     companion object {
         private const val TAG = "GoogleCredentialProvider"
@@ -95,7 +98,7 @@ class GoogleCredentialProvider {
                 this.clientSecret = clientSecret
                 this.authUri = "https://accounts.google.com/o/oauth2/auth"
                 this.tokenUri = "https://oauth2.googleapis.com/token"
-                this.redirectUris = listOf("http://localhost")
+                this.redirectUris = listOf(appConfig.oauthRedirectUri)
             }
         }
 

@@ -2,6 +2,7 @@ package com.payroll.app.desktop.google
 
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.model.ValueRange
+import com.payroll.app.desktop.core.config.AppConfig
 import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.core.utils.RetryUtils
 import com.payroll.app.desktop.domain.models.Client
@@ -19,20 +20,18 @@ import kotlinx.coroutines.withContext
  * - Client data format: Name | Price | Employee Price | Company Price
  */
 class GoogleSheetsService(
-    private val credentialProvider: GoogleCredentialProvider
+    private val credentialProvider: GoogleCredentialProvider,
+    private val appConfig: AppConfig
 ) {
     companion object {
         private const val TAG = "GoogleSheetsService"
-
-        // Main payroll spreadsheet ID (Google Sheets format)
-        // TODO: This should be configurable, not hardcoded
-        private const val SPREADSHEET_ID = "1r_fY7YF3ZWnhDkGq84Cxub6Ok2Dnfm0iqPTB8lzHZRU"
 
         // Column mapping (A=Name, B=Price, C=Employee, D=Company)
         private const val CLIENT_DATA_RANGE = "A:D"
     }
 
     private var sheetsService: Sheets? = null
+    private val spreadsheetId: String = appConfig.googleSheetsSpreadsheetId
 
     init {
         try {
@@ -85,14 +84,14 @@ class GoogleSheetsService(
             val range = "'$sheetName'!$CLIENT_DATA_RANGE"
 
             Logger.info(TAG, "Writing to Google Sheets")
-            Logger.debug(TAG, "Spreadsheet: $SPREADSHEET_ID")
+            Logger.debug(TAG, "Spreadsheet: $spreadsheetId")
             Logger.debug(TAG, "Sheet/Tab: $sheetName")
             Logger.debug(TAG, "Range: $range")
             Logger.debug(TAG, "Data: ${client.name} | €${client.price} | €${client.employeePrice} | €${client.companyPrice}")
 
             val result = RetryUtils.retryWithBackoff {
                 service.spreadsheets().values()
-                    .append(SPREADSHEET_ID, range, body)
+                    .append(spreadsheetId, range, body)
                     .setValueInputOption("USER_ENTERED")
                     .setInsertDataOption("INSERT_ROWS")
                     .execute()
@@ -135,7 +134,7 @@ class GoogleSheetsService(
         try {
             val spreadsheet = RetryUtils.retryWithBackoff {
                 service.spreadsheets()
-                    .get(SPREADSHEET_ID)
+                    .get(spreadsheetId)
                     .execute()
             }
 
@@ -159,7 +158,7 @@ class GoogleSheetsService(
         try {
             val spreadsheet = RetryUtils.retryWithBackoff {
                 service.spreadsheets()
-                    .get(SPREADSHEET_ID)
+                    .get(spreadsheetId)
                     .execute()
             }
 
@@ -209,7 +208,7 @@ class GoogleSheetsService(
             // Execute the request to create the sheet
             RetryUtils.retryWithBackoff {
                 service.spreadsheets()
-                    .batchUpdate(SPREADSHEET_ID, batchUpdateRequest)
+                    .batchUpdate(spreadsheetId, batchUpdateRequest)
                     .execute()
             }
 
@@ -227,7 +226,7 @@ class GoogleSheetsService(
 
             RetryUtils.retryWithBackoff {
                 service.spreadsheets().values()
-                    .update(SPREADSHEET_ID, headerRangeNotation, headerRange)
+                    .update(spreadsheetId, headerRangeNotation, headerRange)
                     .setValueInputOption("RAW")
                     .execute()
             }
@@ -253,13 +252,13 @@ class GoogleSheetsService(
 
         try {
             Logger.info(TAG, "Reading employees from Google Sheets...")
-            Logger.debug(TAG, "Spreadsheet ID: $SPREADSHEET_ID")
+            Logger.debug(TAG, "Spreadsheet ID: $spreadsheetId")
 
             // First, verify this is a valid Sheets document
             try {
                 val metadata = RetryUtils.retryWithBackoff {
                     service.spreadsheets()
-                        .get(SPREADSHEET_ID)
+                        .get(spreadsheetId)
                         .setFields("spreadsheetId,properties(title)")
                         .execute()
                 }
@@ -268,7 +267,7 @@ class GoogleSheetsService(
                 Logger.error(TAG, "Failed to access spreadsheet", e)
                 if (e.message?.contains("404") == true) {
                     return@withContext SheetsReadResult.Error(
-                        "Spreadsheet not found. Please verify SPREADSHEET_ID: $SPREADSHEET_ID"
+                        "Spreadsheet not found. Please verify spreadsheetId: $spreadsheetId"
                     )
                 } else if (e.message?.contains("This operation is not supported") == true) {
                     return@withContext SheetsReadResult.Error(
@@ -284,7 +283,7 @@ class GoogleSheetsService(
 
             val response = RetryUtils.retryWithBackoff {
                 service.spreadsheets().values()
-                    .get(SPREADSHEET_ID, range)
+                    .get(spreadsheetId, range)
                     .execute()
             }
 
@@ -349,7 +348,7 @@ class GoogleSheetsService(
 
             val response = RetryUtils.retryWithBackoff {
                 service.spreadsheets().values()
-                    .get(SPREADSHEET_ID, range)
+                    .get(spreadsheetId, range)
                     .execute()
             }
 

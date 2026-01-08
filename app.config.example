@@ -1,0 +1,31 @@
+# Payroll Desktop Application Configuration
+# Copy this file to "app.config" and fill in your actual values
+# DO NOT commit app.config to version control!
+
+# ==============================================================================
+# Google Sheets Configuration
+# ==============================================================================
+# The ID of your Google Sheets spreadsheet
+# You can find this in the spreadsheet URL:
+# https://docs.google.com/spreadsheets/d/SPREADSHEET_ID_HERE/edit
+google.sheets.spreadsheet_id=YOUR_SPREADSHEET_ID_HERE
+
+# ==============================================================================
+# Google OAuth Configuration
+# ==============================================================================
+# OAuth redirect URI for Google authentication
+# Default: http://localhost (for desktop apps)
+google.oauth.redirect_uri=http://localhost
+
+# ==============================================================================
+# API Configuration
+# ==============================================================================
+# Base URL for the backend API (if using one)
+# Default: http://localhost:8080
+api.base_url=http://localhost:8080
+
+# ==============================================================================
+# Application Settings
+# ==============================================================================
+app.name=Payroll Desktop
+app.version=1.0.0

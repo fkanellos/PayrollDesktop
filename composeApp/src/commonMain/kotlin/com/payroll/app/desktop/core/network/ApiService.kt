@@ -31,9 +31,11 @@ data class EmployeeClientsResponse(
  * API Service for communicating with Spring Boot backend
  * 🔴 UPDATED: Removed PayrollCalculationResponse wrapper
  */
-class PayrollApiService {
+class PayrollApiService(
+    baseUrl: String = "http://localhost:8080"
+) {
 
-    private val baseUrl = "http://localhost:8080"
+    private val baseUrl = baseUrl
 
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
