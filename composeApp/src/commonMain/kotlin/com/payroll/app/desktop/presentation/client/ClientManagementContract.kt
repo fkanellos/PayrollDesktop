@@ -3,6 +3,7 @@ package com.payroll.app.desktop.presentation.client
 import com.payroll.app.desktop.core.base.UiAction
 import com.payroll.app.desktop.core.base.UiEffect
 import com.payroll.app.desktop.core.base.UiState
+import com.payroll.app.desktop.core.resources.StringMessage
 import com.payroll.app.desktop.domain.models.Client
 import com.payroll.app.desktop.domain.models.Employee
 
@@ -72,8 +73,8 @@ sealed class ClientManagementAction : UiAction {
  * ClientManagementEffect - Side effects
  */
 sealed class ClientManagementEffect : UiEffect {
-    data class ShowToast(val message: String) : ClientManagementEffect()
-    data class ShowError(val error: String) : ClientManagementEffect()
+    data class ShowToast(val message: StringMessage) : ClientManagementEffect()
+    data class ShowError(val message: StringMessage) : ClientManagementEffect()
     object ClientCreated : ClientManagementEffect()
     object ClientUpdated : ClientManagementEffect()
     object ClientDeleted : ClientManagementEffect()

@@ -1,8 +1,8 @@
 package com.payroll.app.desktop.ui.screens
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.resources.toDisplayString
 import com.payroll.app.desktop.core.strings.Strings
-import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.core.utils.parseHexColor
 import com.payroll.app.desktop.ui.components.shared.errors.ErrorBanner
 import com.payroll.app.desktop.ui.components.shared.loading.LoadingIndicator
@@ -45,30 +45,40 @@ fun EmployeeManagementScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle side effects
     LaunchedEffect(Unit) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 is EmployeeManagementEffect.ShowToast -> {
-                    Logger.debug("UI", "Toast: ${effect.message}")
+                    val message = effect.message.toDisplayString()
+                    Logger.debug("UI", "Toast: $message")
+                    snackbarHostState.showSnackbar(
+                        message = message,
+                        duration = SnackbarDuration.Short
+                    )
                 }
                 is EmployeeManagementEffect.ShowError -> {
-                    Logger.debug("UI", "Error: ${effect.error}")
+                    val message = effect.message.toDisplayString()
+                    Logger.debug("UI", "Error: $message")
                 }
                 else -> { /* Handle other effects */ }
             }
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = PayrollColors.Background
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            color = PayrollColors.Background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
         ) {
             // Header
             EmployeeManagementHeader(
@@ -191,6 +201,7 @@ fun EmployeeManagementScreen(
                 }
             }
         )
+    }
     }
 }
 

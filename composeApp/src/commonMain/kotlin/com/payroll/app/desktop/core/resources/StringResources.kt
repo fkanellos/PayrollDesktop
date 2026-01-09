@@ -46,6 +46,22 @@ sealed class StringMessage {
     data class ExcelCreated(val filePath: String) : StringMessage()
     data class SyncComplete(val employeesInserted: Int, val employeesUpdated: Int, val clientsInserted: Int, val clientsUpdated: Int) : StringMessage()
 
+    // Employee Management Messages
+    object EmployeeAdded : StringMessage()
+    object EmployeeUpdated : StringMessage()
+    object EmployeeDeleted : StringMessage()
+    data class LoadEmployeesFailed(val message: String) : StringMessage()
+    data class SaveEmployeeFailed(val message: String) : StringMessage()
+    data class DeleteEmployeeFailed(val message: String) : StringMessage()
+
+    // Client Management Messages
+    object ClientAdded : StringMessage()
+    object ClientUpdated : StringMessage()
+    object ClientDeleted : StringMessage()
+    data class SaveClientFailed(val message: String) : StringMessage()
+    data class DeleteClientFailed(val message: String) : StringMessage()
+    data class SyncFailed(val message: String) : StringMessage()
+
     // Error messages
     data class CustomError(val message: String) : StringMessage()
 }
@@ -79,6 +95,22 @@ fun StringMessage.toDisplayString(): String {
         is StringMessage.PdfCreated -> "PDF δημιουργήθηκε!\nΣώθηκε: $filePath"
         is StringMessage.ExcelCreated -> "Excel δημιουργήθηκε!\nΣώθηκε: $filePath"
         is StringMessage.SyncComplete -> "✅ Συγχρονισμός ολοκληρώθηκε!\nΕργαζόμενοι: +$employeesInserted, ~$employeesUpdated | Πελάτες: +$clientsInserted, ~$clientsUpdated"
+
+        // Employee Management
+        is StringMessage.EmployeeAdded -> "✅ Εργαζόμενος προστέθηκε"
+        is StringMessage.EmployeeUpdated -> "✅ Εργαζόμενος ενημερώθηκε"
+        is StringMessage.EmployeeDeleted -> "✅ Εργαζόμενος διαγράφηκε"
+        is StringMessage.LoadEmployeesFailed -> "❌ Αποτυχία φόρτωσης εργαζομένων: $message"
+        is StringMessage.SaveEmployeeFailed -> "❌ Αποτυχία αποθήκευσης εργαζομένου: $message"
+        is StringMessage.DeleteEmployeeFailed -> "❌ Αποτυχία διαγραφής εργαζομένου: $message"
+
+        // Client Management
+        is StringMessage.ClientAdded -> "✅ Πελάτης προστέθηκε"
+        is StringMessage.ClientUpdated -> "✅ Πελάτης ενημερώθηκε"
+        is StringMessage.ClientDeleted -> "✅ Πελάτης διαγράφηκε"
+        is StringMessage.SaveClientFailed -> "❌ Αποτυχία αποθήκευσης πελάτη: $message"
+        is StringMessage.DeleteClientFailed -> "❌ Αποτυχία διαγραφής πελάτη: $message"
+        is StringMessage.SyncFailed -> "❌ Αποτυχία συγχρονισμού: $message"
 
         // Custom error messages
         is StringMessage.CustomError -> message

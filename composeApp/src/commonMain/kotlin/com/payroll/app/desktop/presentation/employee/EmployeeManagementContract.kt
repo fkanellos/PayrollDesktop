@@ -3,6 +3,7 @@ package com.payroll.app.desktop.presentation.employee
 import com.payroll.app.desktop.core.base.UiAction
 import com.payroll.app.desktop.core.base.UiEffect
 import com.payroll.app.desktop.core.base.UiState
+import com.payroll.app.desktop.core.resources.StringMessage
 import com.payroll.app.desktop.domain.models.Employee
 
 /**
@@ -57,8 +58,8 @@ sealed class EmployeeManagementAction : UiAction {
  * Employee Management Effects
  */
 sealed class EmployeeManagementEffect : UiEffect {
-    data class ShowToast(val message: String) : EmployeeManagementEffect()
-    data class ShowError(val error: String) : EmployeeManagementEffect()
+    data class ShowToast(val message: StringMessage) : EmployeeManagementEffect()
+    data class ShowError(val message: StringMessage) : EmployeeManagementEffect()
     object EmployeeCreated : EmployeeManagementEffect()
     object EmployeeUpdated : EmployeeManagementEffect()
     object EmployeeDeleted : EmployeeManagementEffect()

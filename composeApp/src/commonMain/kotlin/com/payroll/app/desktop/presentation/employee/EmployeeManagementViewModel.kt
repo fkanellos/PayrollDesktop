@@ -3,8 +3,8 @@ package com.payroll.app.desktop.presentation.employee
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.base.RepositoryResult
+import com.payroll.app.desktop.core.resources.StringMessage
 import com.payroll.app.desktop.core.strings.Strings
-import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.data.repositories.EmployeeRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -137,7 +137,7 @@ class EmployeeManagementViewModel(
                                 error = null
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeesLoaded.format(employees.size)))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(StringMessage.EmployeesLoaded(employees.size)))
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
@@ -146,7 +146,7 @@ class EmployeeManagementViewModel(
                                 error = "${Strings.Errors.loadEmployeesFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.loadEmployeesFailed}: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError(StringMessage.LoadEmployeesFailed(result.exception.message ?: "Unknown error")))
                     }
                 }
             } catch (e: Exception) {
@@ -174,7 +174,7 @@ class EmployeeManagementViewModel(
                                 isSaving = false
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeeAdded))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(StringMessage.EmployeeAdded))
                         emitSideEffect(EmployeeManagementEffect.EmployeeCreated)
                     }
                     is RepositoryResult.Error -> {
@@ -184,7 +184,7 @@ class EmployeeManagementViewModel(
                                 error = "${Strings.Errors.saveFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.saveFailed}: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError(StringMessage.SaveEmployeeFailed(result.exception.message ?: "Unknown error")))
                     }
                 }
             } catch (e: Exception) {
@@ -214,7 +214,7 @@ class EmployeeManagementViewModel(
                                 isSaving = false
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeeUpdated))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(StringMessage.EmployeeUpdated))
                         emitSideEffect(EmployeeManagementEffect.EmployeeUpdated)
                     }
                     is RepositoryResult.Error -> {
@@ -224,7 +224,7 @@ class EmployeeManagementViewModel(
                                 error = "${Strings.Errors.saveFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.saveFailed}: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError(StringMessage.SaveEmployeeFailed(result.exception.message ?: "Unknown error")))
                     }
                 }
             } catch (e: Exception) {
@@ -253,7 +253,7 @@ class EmployeeManagementViewModel(
                                 isSaving = false
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowToast(Strings.Success.employeeDeleted))
+                        emitSideEffect(EmployeeManagementEffect.ShowToast(StringMessage.EmployeeDeleted))
                         emitSideEffect(EmployeeManagementEffect.EmployeeDeleted)
                     }
                     is RepositoryResult.Error -> {
@@ -264,7 +264,7 @@ class EmployeeManagementViewModel(
                                 error = "${Strings.Errors.deleteFailed}: ${result.exception.message}"
                             )
                         }
-                        emitSideEffect(EmployeeManagementEffect.ShowError("${Strings.Errors.deleteFailed}: ${result.exception.message}"))
+                        emitSideEffect(EmployeeManagementEffect.ShowError(StringMessage.DeleteEmployeeFailed(result.exception.message ?: "Unknown error")))
                     }
                 }
             } catch (e: Exception) {
