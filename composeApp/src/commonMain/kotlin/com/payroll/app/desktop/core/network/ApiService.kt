@@ -10,6 +10,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 @Serializable
@@ -55,14 +56,53 @@ class PayrollApiService(
     }
 
     /**
+     * Helper function to handle API calls with proper exception handling
+     * Differentiates between client errors (4xx), server errors (5xx),
+     * serialization errors, and timeout errors
+     */
+    private suspend inline fun <T> safeApiCall(
+        crossinline apiCall: suspend () -> T
+    ): RepositoryResult<T> {
+        return try {
+            val result = apiCall()
+            RepositoryResult.Success(result)
+        } catch (e: ClientRequestException) {
+            // 4xx errors (client-side errors like 404, 400, 401, etc.)
+            RepositoryResult.Error(
+                Exception("Client error [${e.response.status.value}]: ${e.message}")
+            )
+        } catch (e: ServerResponseException) {
+            // 5xx errors (server-side errors like 500, 503, etc.)
+            RepositoryResult.Error(
+                Exception("Server error [${e.response.status.value}]: ${e.message}")
+            )
+        } catch (e: RedirectResponseException) {
+            // 3xx errors (redirects)
+            RepositoryResult.Error(
+                Exception("Redirect error [${e.response.status.value}]: ${e.message}")
+            )
+        } catch (e: SerializationException) {
+            // JSON parsing errors
+            RepositoryResult.Error(
+                Exception("Failed to parse response: ${e.message}")
+            )
+        } catch (e: HttpRequestTimeoutException) {
+            // Timeout errors
+            RepositoryResult.Error(
+                Exception("Request timeout: ${e.message}")
+            )
+        } catch (e: Exception) {
+            // Generic fallback for unexpected errors
+            RepositoryResult.Error(e)
+        }
+    }
+
+    /**
      * Get all employees
      */
     suspend fun getEmployees(): RepositoryResult<List<Employee>> {
-        return try {
-            val response: List<Employee> = httpClient.get("$baseUrl/api/employees").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/api/employees").body()
         }
     }
 
@@ -70,11 +110,8 @@ class PayrollApiService(
      * Get employee by ID
      */
     suspend fun getEmployee(id: String): RepositoryResult<Employee> {
-        return try {
-            val response: Employee = httpClient.get("$baseUrl/api/employees/$id").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/api/employees/$id").body()
         }
     }
 
@@ -83,11 +120,9 @@ class PayrollApiService(
      * 🔧 FIXED: Backend returns wrapper { employeeId, clients }
      */
     suspend fun getEmployeeClients(employeeId: String): RepositoryResult<List<Client>> {
-        return try {
+        return safeApiCall {
             val response: EmployeeClientsResponse = httpClient.get("$baseUrl/api/clients/employee/$employeeId").body()
-            RepositoryResult.Success(response.clients)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+            response.clients
         }
     }
 
@@ -95,11 +130,8 @@ class PayrollApiService(
      * Get all clients
      */
     suspend fun getAllClients(): RepositoryResult<List<Client>> {
-        return try {
-            val response: List<Client> = httpClient.get("$baseUrl/api/clients").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/api/clients").body()
         }
     }
 
@@ -107,14 +139,11 @@ class PayrollApiService(
      * Create a new client
      */
     suspend fun createClient(client: Client): RepositoryResult<Client> {
-        return try {
-            val response: Client = httpClient.post("$baseUrl/api/clients") {
+        return safeApiCall {
+            httpClient.post("$baseUrl/api/clients") {
                 contentType(ContentType.Application.Json)
                 setBody(client)
             }.body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
         }
     }
 
@@ -122,14 +151,11 @@ class PayrollApiService(
      * Update an existing client
      */
     suspend fun updateClient(id: Long, client: Client): RepositoryResult<Client> {
-        return try {
-            val response: Client = httpClient.put("$baseUrl/api/clients/$id") {
+        return safeApiCall {
+            httpClient.put("$baseUrl/api/clients/$id") {
                 contentType(ContentType.Application.Json)
                 setBody(client)
             }.body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
         }
     }
 
@@ -137,11 +163,9 @@ class PayrollApiService(
      * Delete a client
      */
     suspend fun deleteClient(id: Long): RepositoryResult<Boolean> {
-        return try {
+        return safeApiCall {
             httpClient.delete("$baseUrl/api/clients/$id")
-            RepositoryResult.Success(true)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+            true
         }
     }
 
@@ -150,7 +174,7 @@ class PayrollApiService(
      * 🔴 UPDATED: Backend now returns wrapper with ID
      */
     suspend fun calculatePayroll(request: PayrollRequest): RepositoryResult<PayrollResponse> {
-        return try {
+        return safeApiCall {
             // Backend returns: { id: "...", payroll: {...} }
             val response: PayrollCalculationResponse = httpClient.post("$baseUrl/payroll/calculate") {
                 contentType(ContentType.Application.Json)
@@ -158,11 +182,7 @@ class PayrollApiService(
             }.body()
 
             // Extract payroll with ID already set
-            val payrollWithId = response.payroll.copy(id = response.id)
-
-            RepositoryResult.Success(payrollWithId)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+            response.payroll.copy(id = response.id)
         }
     }
 
@@ -174,14 +194,11 @@ class PayrollApiService(
         startDate: String,
         endDate: String
     ): RepositoryResult<Map<String, Any>> {
-        return try {
-            val response: Map<String, Any> = httpClient.get("$baseUrl/api/calendar/events/$employeeId") {
+        return safeApiCall {
+            httpClient.get("$baseUrl/api/calendar/events/$employeeId") {
                 parameter("startDate", startDate)
                 parameter("endDate", endDate)
             }.body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
         }
     }
 
@@ -189,11 +206,8 @@ class PayrollApiService(
      * Test backend connection
      */
     suspend fun testConnection(): RepositoryResult<String> {
-        return try {
-            val response: String = httpClient.get("$baseUrl/hello").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/hello").body()
         }
     }
 
@@ -201,11 +215,8 @@ class PayrollApiService(
      * Download PDF for a payroll calculation
      */
     suspend fun downloadPdf(payrollId: String): RepositoryResult<ByteArray> {
-        return try {
-            val response: ByteArray = httpClient.get("$baseUrl/api/export/payroll/$payrollId/pdf").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/api/export/payroll/$payrollId/pdf").body()
         }
     }
 
@@ -213,11 +224,8 @@ class PayrollApiService(
      * 🆕 Check if payroll exists in Google Sheets
      */
     suspend fun checkPayrollInSheets(payrollId: String): RepositoryResult<CheckSheetsResponse> {
-        return try {
-            val response: CheckSheetsResponse = httpClient.get("$baseUrl/payroll/$payrollId/check-sheets").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/payroll/$payrollId/check-sheets").body()
         }
     }
 
@@ -225,11 +233,8 @@ class PayrollApiService(
      * 🆕 Sync payroll to Google Sheets
      */
     suspend fun syncPayrollToSheets(payrollId: String): RepositoryResult<SyncSheetsResponse> {
-        return try {
-            val response: SyncSheetsResponse = httpClient.post("$baseUrl/payroll/$payrollId/sync-to-sheets").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.post("$baseUrl/payroll/$payrollId/sync-to-sheets").body()
         }
     }
 
@@ -239,14 +244,11 @@ class PayrollApiService(
      * Create a new employee
      */
     suspend fun createEmployee(employee: Employee): RepositoryResult<Employee> {
-        return try {
-            val response: Employee = httpClient.post("$baseUrl/api/employees") {
+        return safeApiCall {
+            httpClient.post("$baseUrl/api/employees") {
                 contentType(ContentType.Application.Json)
                 setBody(employee)
             }.body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
         }
     }
 
@@ -254,14 +256,11 @@ class PayrollApiService(
      * Update an existing employee
      */
     suspend fun updateEmployee(id: String, employee: Employee): RepositoryResult<Employee> {
-        return try {
-            val response: Employee = httpClient.put("$baseUrl/api/employees/$id") {
+        return safeApiCall {
+            httpClient.put("$baseUrl/api/employees/$id") {
                 contentType(ContentType.Application.Json)
                 setBody(employee)
             }.body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
         }
     }
 
@@ -269,11 +268,9 @@ class PayrollApiService(
      * Delete an employee
      */
     suspend fun deleteEmployee(id: String): RepositoryResult<Boolean> {
-        return try {
+        return safeApiCall {
             httpClient.delete("$baseUrl/api/employees/$id")
-            RepositoryResult.Success(true)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+            true
         }
     }
 
@@ -283,11 +280,8 @@ class PayrollApiService(
      * Sync database from Excel file in Google Drive
      */
     suspend fun syncDatabase(): RepositoryResult<SyncDatabaseResponse> {
-        return try {
-            val response: SyncDatabaseResponse = httpClient.post("$baseUrl/api/db/sync").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.post("$baseUrl/api/db/sync").body()
         }
     }
 
@@ -295,11 +289,8 @@ class PayrollApiService(
      * Get database sync statistics
      */
     suspend fun getDatabaseStats(): RepositoryResult<DatabaseStatsResponse> {
-        return try {
-            val response: DatabaseStatsResponse = httpClient.get("$baseUrl/api/db/stats").body()
-            RepositoryResult.Success(response)
-        } catch (e: Exception) {
-            RepositoryResult.Error(e)
+        return safeApiCall {
+            httpClient.get("$baseUrl/api/db/stats").body()
         }
     }
 

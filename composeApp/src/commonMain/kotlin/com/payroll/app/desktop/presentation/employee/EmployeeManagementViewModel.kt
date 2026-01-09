@@ -15,8 +15,7 @@ import kotlinx.coroutines.flow.asSharedFlow
  * Handles CRUD operations for employees
  */
 class EmployeeManagementViewModel(
-    private val employeeRepository: EmployeeRepository,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val employeeRepository: EmployeeRepository
 ) : BaseViewModel<EmployeeManagementState, EmployeeManagementAction, EmployeeManagementEffect>() {
 
     override val initialState = EmployeeManagementState()
@@ -26,7 +25,7 @@ class EmployeeManagementViewModel(
 
     init {
         _uiState.value = initialState
-        scope.launch {
+        viewModelScope.launch {
             delay(AppConstants.Timing.UI_INIT_DELAY_MS)
             handleAction(EmployeeManagementAction.LoadEmployees)
         }
@@ -124,7 +123,7 @@ class EmployeeManagementViewModel(
     }
 
     private fun loadEmployees() {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = employeeRepository.getAll()) {
                     is RepositoryResult.Success -> {
@@ -161,7 +160,7 @@ class EmployeeManagementViewModel(
     }
 
     private fun createEmployee(employee: com.payroll.app.desktop.domain.models.Employee) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = employeeRepository.createEmployee(employee)) {
                     is RepositoryResult.Success -> {
@@ -199,7 +198,7 @@ class EmployeeManagementViewModel(
     }
 
     private fun updateEmployee(employee: com.payroll.app.desktop.domain.models.Employee) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = employeeRepository.updateEmployee(employee)) {
                     is RepositoryResult.Success -> {
@@ -239,7 +238,7 @@ class EmployeeManagementViewModel(
     }
 
     private fun deleteEmployee(employeeId: String) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = employeeRepository.deleteEmployee(employeeId)) {
                     is RepositoryResult.Success -> {
@@ -280,12 +279,8 @@ class EmployeeManagementViewModel(
     }
 
     private fun emitSideEffect(effect: EmployeeManagementEffect) {
-        scope.launch {
+        viewModelScope.launch {
             _sideEffect.emit(effect)
         }
-    }
-
-    override fun onCleared() {
-        scope.cancel()
     }
 }

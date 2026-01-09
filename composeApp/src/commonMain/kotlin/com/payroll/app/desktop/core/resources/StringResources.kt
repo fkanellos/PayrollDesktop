@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.core.resources
 
+import kotlin.math.round
+
 /**
  * Type-safe string resources for passing messages from ViewModel → UI
  *
@@ -67,6 +69,17 @@ sealed class StringMessage {
 }
 
 /**
+ * Format a Double to 2 decimal places for currency display
+ * KMP-compatible helper function
+ */
+private fun Double.formatCurrency(): String {
+    val rounded = round(this * 100) / 100
+    val integerPart = rounded.toInt()
+    val decimalPart = ((rounded - integerPart) * 100).toInt()
+    return "$integerPart.${decimalPart.toString().padStart(2, '0')}"
+}
+
+/**
  * Convert StringMessage to display string
  * UI layer responsibility - formats the message with arguments
  */
@@ -88,10 +101,10 @@ fun StringMessage.toDisplayString(): String {
         is StringMessage.EmployeesLoaded -> "✅ Φορτώθηκαν $count εργαζόμενοι"
         is StringMessage.EmployeeSelectedWithClients -> "Επιλέχθηκε $name - $clientCount πελάτες"
         is StringMessage.UncertainMatchesFound -> "⚠️ Βρέθηκαν $count αβέβαιες αντιστοιχίες - επιβεβαιώστε τις"
-        is StringMessage.CalculationComplete -> "✅ Υπολογισμός ολοκληρώθηκε! $sessions συνεδρίες, €${String.format("%.2f", revenue)}"
+        is StringMessage.CalculationComplete -> "✅ Υπολογισμός ολοκληρώθηκε! $sessions συνεδρίες, €${revenue.formatCurrency()}"
         is StringMessage.MatchConfirmed -> "✅ Match επιβεβαιώθηκε: '$eventTitle' → '$clientName'"
         is StringMessage.MatchRejected -> "❌ Match απορρίφθηκε: '$eventTitle'"
-        is StringMessage.ClientAddSuccess -> "✅ Πελάτης '$clientName' προστέθηκε (€${String.format("%.2f", price)}, Εργαζόμενος: €${String.format("%.2f", employeePrice)}, Εταιρία: €${String.format("%.2f", companyPrice)})"
+        is StringMessage.ClientAddSuccess -> "✅ Πελάτης '$clientName' προστέθηκε (€${price.formatCurrency()}, Εργαζόμενος: €${employeePrice.formatCurrency()}, Εταιρία: €${companyPrice.formatCurrency()})"
         is StringMessage.PdfCreated -> "PDF δημιουργήθηκε!\nΣώθηκε: $filePath"
         is StringMessage.ExcelCreated -> "Excel δημιουργήθηκε!\nΣώθηκε: $filePath"
         is StringMessage.SyncComplete -> "✅ Συγχρονισμός ολοκληρώθηκε!\nΕργαζόμενοι: +$employeesInserted, ~$employeesUpdated | Πελάτες: +$clientsInserted, ~$clientsUpdated"

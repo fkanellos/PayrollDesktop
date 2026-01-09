@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.round
 
 /**
  * ViewModel for Settings screen
@@ -50,7 +51,7 @@ class SettingsViewModel(
 
             result.fold(
                 onSuccess = { response ->
-                    val durationSec = String.format("%.1f", response.durationMs / 1000.0)
+                    val durationSec = formatDuration(response.durationMs)
                     val message = Strings.Success.syncComplete(
                         response.employeesInserted,
                         response.employeesUpdated,
@@ -91,7 +92,7 @@ class SettingsViewModel(
 
             result.fold(
                 onSuccess = { response ->
-                    val durationSec = String.format("%.1f", response.durationMs / 1000.0)
+                    val durationSec = formatDuration(response.durationMs)
                     val message = if (response.employeesFailed > 0 || response.clientsFailed > 0) {
                         Strings.Success.pushCompleteWithErrors(
                             response.employeesPushed,
@@ -133,5 +134,17 @@ class SettingsViewModel(
             error = null,
             lastSyncResult = null
         )
+    }
+
+    /**
+     * Format duration in milliseconds to seconds with 1 decimal place
+     * KMP-compatible helper function
+     */
+    private fun formatDuration(durationMs: Long): String {
+        val seconds = durationMs / 1000.0
+        val rounded = round(seconds * 10) / 10
+        val integerPart = rounded.toInt()
+        val decimalPart = ((rounded - integerPart) * 10).toInt()
+        return "$integerPart.$decimalPart"
     }
 }

@@ -19,8 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 class ClientManagementViewModel(
     private val payrollRepository: PayrollRepository,
-    private val clientRepository: ClientRepository,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val clientRepository: ClientRepository
 ) : BaseViewModel<ClientManagementState, ClientManagementAction, ClientManagementEffect>() {
 
     override val initialState = ClientManagementState()
@@ -30,7 +29,7 @@ class ClientManagementViewModel(
 
     init {
         _uiState.value = initialState
-        scope.launch {
+        viewModelScope.launch {
             delay(AppConstants.Timing.UI_INIT_DELAY_MS)
             handleAction(ClientManagementAction.LoadEmployees)
         }
@@ -123,7 +122,7 @@ class ClientManagementViewModel(
     }
 
     private fun loadEmployees() {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = payrollRepository.getAllEmployees()) {
                     is RepositoryResult.Success -> {
@@ -170,7 +169,7 @@ class ClientManagementViewModel(
     }
 
     private fun loadClientsForEmployee(employeeId: String) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = clientRepository.getByEmployeeId(employeeId)) {
                     is RepositoryResult.Success -> {
@@ -204,7 +203,7 @@ class ClientManagementViewModel(
     }
 
     private fun createClient(client: Client) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = clientRepository.createClient(client)) {
                     is RepositoryResult.Success -> {
@@ -241,7 +240,7 @@ class ClientManagementViewModel(
     }
 
     private fun updateClient(client: Client) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = clientRepository.updateClient(client)) {
                     is RepositoryResult.Success -> {
@@ -280,7 +279,7 @@ class ClientManagementViewModel(
     }
 
     private fun deleteClient(clientId: Long) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 when (val result = clientRepository.deleteClient(clientId)) {
                     is RepositoryResult.Success -> {
@@ -317,7 +316,7 @@ class ClientManagementViewModel(
     }
 
     private fun syncClientsFromSheets() {
-        scope.launch {
+        viewModelScope.launch {
             val currentState = _uiState.value
             val employee = currentState.selectedEmployee
 
@@ -382,12 +381,8 @@ class ClientManagementViewModel(
     }
 
     private fun emitSideEffect(effect: ClientManagementEffect) {
-        scope.launch {
+        viewModelScope.launch {
             _sideEffect.emit(effect)
         }
-    }
-
-    override fun onCleared() {
-        scope.cancel()
     }
 }
