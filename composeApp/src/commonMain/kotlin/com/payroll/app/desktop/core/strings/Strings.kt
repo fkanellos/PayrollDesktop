@@ -100,45 +100,45 @@ object Strings {
         const val calculationInProgress = "Υπολογισμός ήδη σε εξέλιξη"
         const val pleaseFillAllFields = "Παρακαλώ συμπληρώστε όλα τα απαραίτητα πεδία"
         const val startingCalculation = "Έναρξη υπολογισμού μισθοδοσίας..."
-        const val uncertainMatchesFound = "⚠️ Βρέθηκαν %d αβέβαιες αντιστοιχίες που χρειάζονται επιβεβαίωση"
-        const val calculationComplete = "✅ Υπολογισμός ολοκληρώθηκε! %d συνεδρίες, %s€"
+        fun uncertainMatchesFound(count: Int) = "⚠️ Βρέθηκαν $count αβέβαιες αντιστοιχίες που χρειάζονται επιβεβαίωση"
+        fun calculationComplete(sessions: Int, amount: String) = "✅ Υπολογισμός ολοκληρώθηκε! $sessions συνεδρίες, $amount€"
         const val calculationError = "Σφάλμα υπολογισμού"
-        const val pdfCreated = "✅ PDF δημιουργήθηκε: %s"
+        fun pdfCreated(path: String) = "✅ PDF δημιουργήθηκε: $path"
         const val pdfExportError = "Σφάλμα εξαγωγής PDF"
-        const val excelCreated = "✅ Excel δημιουργήθηκε: %s"
+        fun excelCreated(path: String) = "✅ Excel δημιουργήθηκε: $path"
         const val excelExportError = "Σφάλμα εξαγωγής Excel"
         const val sheetsSyncNotImplemented = "Sheets sync not yet implemented for local mode"
-        const val matchConfirmed = "✅ Αποθηκεύτηκε: '%s' → '%s'"
+        fun matchConfirmed(from: String, to: String) = "✅ Αποθηκεύτηκε: '$from' → '$to'"
         const val allMatchesConfirmed = "Όλες οι αντιστοιχίες επιβεβαιώθηκαν! Επαναυπολογισμός..."
-        const val matchRejected = "Απορρίφθηκε: '%s'"
+        fun matchRejected(name: String) = "Απορρίφθηκε: '$name'"
         const val allMatchesProcessed = "Όλες οι αντιστοιχίες επεξεργάστηκαν! Επαναυπολογισμός..."
-        const val clientAddSuccess = "✅ Client '%s' added! (€%s: Employee €%s / Company €%s)"
-        const val clientAddFailed = "Failed to add client"
+        fun clientAddSuccess(name: String, total: String, employee: String, company: String) = "✅ Πελάτης '$name' προστέθηκε! (€$total: Εργαζόμενος €$employee / Εταιρία €$company)"
+        const val clientAddFailed = "Αποτυχία προσθήκης πελάτη"
         const val refreshingData = "🔄 Ανανέωση δεδομένων..."
         const val retryingCalculation = "🔄 Επανάληψη υπολογισμού..."
         const val refreshComplete = "✅ Ανανέωση ολοκληρώθηκε"
         const val refreshError = "Σφάλμα ανανέωσης"
 
         // Unmatched events messages
-        const val allUnmatchedAdded = "All unmatched clients have been added! Re-calculate to see updated results."
-        const val clickToAddClient = "Click + to add client with default prices"
-        const val defaultPrices = "Default prices:"
-        const val defaultPriceTotal = "Total: €50"
-        const val defaultPriceEmployee = "Employee: €22.5"
-        const val defaultPriceCompany = "Company: €27.5"
+        const val allUnmatchedAdded = "Όλοι οι μη αντιστοιχισμένοι πελάτες προστέθηκαν! Επανυπολογίστε για να δείτε τα αποτελέσματα."
+        const val clickToAddClient = "Πατήστε + για να προσθέσετε πελάτη με προεπιλεγμένες τιμές"
+        const val defaultPrices = "Προεπιλεγμένες τιμές:"
+        const val defaultPriceTotal = "Σύνολο: €50"
+        const val defaultPriceEmployee = "Εργαζόμενος: €22.5"
+        const val defaultPriceCompany = "Εταιρία: €27.5"
 
         // Client status and payment labels
-        const val includesPendingPayments = "Includes %s from %d pending payment(s)"
-        const val clientOwes = "Client still owes %d pending payment(s)"
-        const val pendingPayment = "Pending Payment"
-        const val statusCompleted = "Completed"
-        const val statusCancelled = "Cancelled"
-        const val sessionsLabel = "Sessions: %d"
-        const val paidLabel = "Paid: %s"
-        const val completedSessionsLabel = "Completed: %d"
-        const val pendingSessionsLabel = "Pending: %d"
-        const val paidPreviouslyLabel = "Paid prev: %d"
-        const val unmatchedEventsLabel = "Unmatched Events (%d)"
+        fun includesPendingPayments(amount: String, count: Int) = "Περιλαμβάνει $amount από $count εκκρεμείς πληρωμές"
+        fun clientOwes(count: Int) = "Ο πελάτης χρωστάει $count εκκρεμείς πληρωμές"
+        const val pendingPayment = "Εκκρεμής Πληρωμή"
+        const val statusCompleted = "Ολοκληρωμένη"
+        const val statusCancelled = "Ακυρωμένη"
+        fun sessionsLabel(count: Int) = "Συνεδρίες: $count"
+        fun paidLabel(amount: String) = "Πληρωμένες: $amount"
+        fun completedSessionsLabel(count: Int) = "Ολοκληρωμένες: $count"
+        fun pendingSessionsLabel(count: Int) = "Εκκρεμείς: $count"
+        fun paidPreviouslyLabel(count: Int) = "Προπληρωμένες: $count"
+        fun unmatchedEventsLabel(count: Int) = "Μη Αντιστοιχισμένα Συμβάντα ($count)"
     }
 
     // ==================== CLIENT MANAGEMENT ====================
@@ -159,12 +159,12 @@ object Strings {
         const val employeePrice = "Τιμή Εργαζομένου"
         const val companyPrice = "Τιμή Εταιρείας"
 
-        const val totalClients = "Σύνολο: %d πελάτες"
+        fun totalClients(count: Int) = "Σύνολο: $count πελάτες"
         const val noClients = "Δεν υπάρχουν πελάτες"
         const val noClientsForEmployee = "Δεν υπάρχουν πελάτες για αυτόν τον εργαζόμενο"
 
         const val confirmDelete = "Επιβεβαίωση Διαγραφής"
-        const val confirmDeleteMessage = "Είστε σίγουροι ότι θέλετε να διαγράψετε τον πελάτη '%s';"
+        fun confirmDeleteMessage(name: String) = "Είστε σίγουροι ότι θέλετε να διαγράψετε τον πελάτη '$name';"
     }
 
     // ==================== EMPLOYEE MANAGEMENT ====================
@@ -185,7 +185,7 @@ object Strings {
 
         const val noEmployees = "Δεν υπάρχουν εργαζόμενοι"
         const val confirmDelete = "Επιβεβαίωση Διαγραφής"
-        const val confirmDeleteMessage = "Είστε σίγουροι ότι θέλετε να διαγράψετε τον εργαζόμενο '%s';"
+        fun confirmDeleteMessage(name: String) = "Είστε σίγουροι ότι θέλετε να διαγράψετε τον εργαζόμενο '$name';"
     }
 
     // ==================== SETTINGS ====================
@@ -307,15 +307,15 @@ object Strings {
         const val employeeUpdated = "Ο εργαζόμενος ενημερώθηκε"
         const val employeeDeleted = "Ο εργαζόμενος διαγράφηκε"
 
-        const val syncComplete = "📥 Συγχρονισμός ολοκληρώθηκε!\n\nΕργαζόμενοι: +%d / ↻%d\nΠελάτες: +%d / ↻%d\n\n⏱️ Διάρκεια: %.1f δευτερόλεπτα"
-        const val pushComplete = "🚀 Push ολοκληρώθηκε!\n\nΕργαζόμενοι: ✓%d\nΠελάτες: ✓%d\n\n⏱️ Διάρκεια: %.1f δευτερόλεπτα"
-        const val pushCompleteWithErrors = "🚀 Push ολοκληρώθηκε!\n\nΕργαζόμενοι: ✓%d / ✗%d\nΠελάτες: ✓%d / ✗%d\n\n⏱️ Διάρκεια: %.1f δευτερόλεπτα"
+        fun syncComplete(employeesInserted: Int, employeesUpdated: Int, clientsInserted: Int, clientsUpdated: Int, durationSec: String) = "📥 Συγχρονισμός ολοκληρώθηκε!\n\nΕργαζόμενοι: +$employeesInserted / ↻$employeesUpdated\nΠελάτες: +$clientsInserted / ↻$clientsUpdated\n\n⏱️ Διάρκεια: $durationSec δευτερόλεπτα"
+        fun pushComplete(employeesPushed: Int, clientsPushed: Int, durationSec: String) = "🚀 Push ολοκληρώθηκε!\n\nΕργαζόμενοι: ✓$employeesPushed\nΠελάτες: ✓$clientsPushed\n\n⏱️ Διάρκεια: $durationSec δευτερόλεπτα"
+        fun pushCompleteWithErrors(employeesPushed: Int, employeesFailed: Int, clientsPushed: Int, clientsFailed: Int, durationSec: String) = "🚀 Push ολοκληρώθηκε!\n\nΕργαζόμενοι: ✓$employeesPushed / ✗$employeesFailed\nΠελάτες: ✓$clientsPushed / ✗$clientsFailed\n\n⏱️ Διάρκεια: $durationSec δευτερόλεπτα"
 
-        const val syncResult = "Συγχρονισμός: %d χωρίς αλλαγές"
-        const val syncResultWithChanges = "Συγχρονισμός: +%d νέοι, ↻%d ενημερώθηκαν"
+        fun syncResult(count: Int) = "Συγχρονισμός: $count χωρίς αλλαγές"
+        fun syncResultWithChanges(newCount: Int, updatedCount: Int) = "Συγχρονισμός: +$newCount νέοι, ↻$updatedCount ενημερώθηκαν"
 
-        const val employeesLoaded = "Φορτώθηκαν %d εργαζόμενοι"
-        const val clientsLoaded = "Φορτώθηκαν %d πελάτες"
+        fun employeesLoaded(count: Int) = "Φορτώθηκαν $count εργαζόμενοι"
+        fun clientsLoaded(count: Int) = "Φορτώθηκαν $count πελάτες"
     }
 
     // ==================== INFO MESSAGES ====================

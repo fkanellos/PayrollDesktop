@@ -3,8 +3,8 @@ package com.payroll.app.desktop.presentation.client
 import com.payroll.app.desktop.core.base.BaseViewModel
 import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.base.RepositoryResult
+import com.payroll.app.desktop.core.resources.StringMessage
 import com.payroll.app.desktop.core.strings.Strings
-import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.data.repositories.ClientRepository
 import com.payroll.app.desktop.data.repositories.PayrollRepository
 import com.payroll.app.desktop.domain.models.Client
@@ -143,7 +143,7 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast(Strings.Success.employeesLoaded.format(result.data.size))
+                            ClientManagementEffect.ShowToast(StringMessage.EmployeesLoaded(result.data.size))
                         )
                     }
                     is RepositoryResult.Error -> {
@@ -154,7 +154,7 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError(Strings.Errors.loadEmployeesFailed)
+                            ClientManagementEffect.ShowError(StringMessage.LoadEmployeesFailed(result.exception.message ?: "Unknown error"))
                         )
                     }
                 }
@@ -217,7 +217,7 @@ class ClientManagementViewModel(
                         }
                         emitSideEffect(ClientManagementEffect.ClientCreated)
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast(Strings.Success.clientAdded)
+                            ClientManagementEffect.ShowToast(StringMessage.ClientAdded)
                         )
                     }
                     is RepositoryResult.Error -> {
@@ -228,7 +228,7 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError(Strings.Errors.saveFailed)
+                            ClientManagementEffect.ShowError(StringMessage.SaveClientFailed(result.exception.message ?: "Unknown error"))
                         )
                     }
                 }
@@ -256,7 +256,7 @@ class ClientManagementViewModel(
                         }
                         emitSideEffect(ClientManagementEffect.ClientUpdated)
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast(Strings.Success.clientUpdated)
+                            ClientManagementEffect.ShowToast(StringMessage.ClientUpdated)
                         )
                     }
                     is RepositoryResult.Error -> {
@@ -267,7 +267,7 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError(Strings.Errors.saveFailed)
+                            ClientManagementEffect.ShowError(StringMessage.SaveClientFailed(result.exception.message ?: "Unknown error"))
                         )
                     }
                 }
@@ -293,7 +293,7 @@ class ClientManagementViewModel(
                         }
                         emitSideEffect(ClientManagementEffect.ClientDeleted)
                         emitSideEffect(
-                            ClientManagementEffect.ShowToast(Strings.Success.clientDeleted)
+                            ClientManagementEffect.ShowToast(StringMessage.ClientDeleted)
                         )
                     }
                     is RepositoryResult.Error -> {
@@ -304,7 +304,7 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError(Strings.Errors.deleteFailed)
+                            ClientManagementEffect.ShowError(StringMessage.DeleteClientFailed(result.exception.message ?: "Unknown error"))
                         )
                     }
                 }
@@ -345,19 +345,15 @@ class ClientManagementViewModel(
 
                         emitSideEffect(ClientManagementEffect.SyncComplete(syncResult.created, syncResult.updated, syncResult.unchanged))
 
-                        // Build toast message
-                        val messageParts = mutableListOf<String>()
-                        if (syncResult.created > 0) messageParts.add("${syncResult.created} new")
-                        if (syncResult.updated > 0) messageParts.add("${syncResult.updated} updated")
-                        if (syncResult.unchanged > 0) messageParts.add("${syncResult.unchanged} unchanged")
-
-                        val message = if (messageParts.isEmpty()) {
-                            Strings.Success.synced
-                        } else {
-                            "Sync: ${messageParts.joinToString(", ")}"
-                        }
-
-                        emitSideEffect(ClientManagementEffect.ShowToast(message))
+                        // Show sync complete toast
+                        emitSideEffect(ClientManagementEffect.ShowToast(
+                            StringMessage.SyncComplete(
+                                employeesInserted = 0,
+                                employeesUpdated = 0,
+                                clientsInserted = syncResult.created,
+                                clientsUpdated = syncResult.updated
+                            )
+                        ))
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
@@ -367,7 +363,7 @@ class ClientManagementViewModel(
                             )
                         }
                         emitSideEffect(
-                            ClientManagementEffect.ShowError(Strings.Errors.syncFailed.format(result.exception.message))
+                            ClientManagementEffect.ShowError(StringMessage.SyncFailed(result.exception.message ?: "Unknown error"))
                         )
                     }
                 }
@@ -379,7 +375,7 @@ class ClientManagementViewModel(
                     )
                 }
                 emitSideEffect(
-                    ClientManagementEffect.ShowError(Strings.Errors.syncFailed.format(e.message ?: "Unknown error"))
+                    ClientManagementEffect.ShowError(StringMessage.SyncFailed(e.message ?: "Unknown error"))
                 )
             }
         }

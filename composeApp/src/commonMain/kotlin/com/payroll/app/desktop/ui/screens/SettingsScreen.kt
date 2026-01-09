@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.ui.screens
 
+import com.payroll.app.desktop.core.resources.toDisplayString
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -34,19 +35,19 @@ fun SettingsScreen(
             when (effect) {
                 is SettingsEffect.ShowToast -> {
                     snackbarHostState.showSnackbar(
-                        message = effect.message,
+                        message = effect.message.toDisplayString(),
                         duration = SnackbarDuration.Short
                     )
                 }
                 is SettingsEffect.SyncComplete -> {
                     snackbarHostState.showSnackbar(
-                        message = effect.message,
+                        message = effect.message.toDisplayString(),
                         duration = SnackbarDuration.Long
                     )
                 }
                 is SettingsEffect.ShowError -> {
                     snackbarHostState.showSnackbar(
-                        message = effect.error,
+                        message = effect.message.toDisplayString(),
                         duration = SnackbarDuration.Long
                     )
                 }

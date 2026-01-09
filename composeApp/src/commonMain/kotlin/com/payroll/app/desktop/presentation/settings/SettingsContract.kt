@@ -1,5 +1,7 @@
 package com.payroll.app.desktop.presentation.settings
 
+import com.payroll.app.desktop.core.resources.StringMessage
+
 /**
  * Settings Screen MVI Contract
  */
@@ -18,8 +20,8 @@ object SettingsContract {
     }
 
     sealed class SettingsEffect {
-        data class ShowToast(val message: String) : SettingsEffect()
-        data class SyncComplete(val message: String) : SettingsEffect()
-        data class ShowError(val error: String) : SettingsEffect()
+        data class ShowToast(val message: StringMessage) : SettingsEffect()
+        data class SyncComplete(val message: StringMessage) : SettingsEffect()
+        data class ShowError(val message: StringMessage) : SettingsEffect()
     }
 }

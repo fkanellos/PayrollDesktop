@@ -1,8 +1,8 @@
 package com.payroll.app.desktop.ui.screens
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.resources.toDisplayString
 import com.payroll.app.desktop.core.strings.Strings
-import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.ui.components.shared.errors.ErrorBanner
 import com.payroll.app.desktop.ui.components.shared.loading.LoadingIndicator
 import com.payroll.app.desktop.ui.components.shared.empty.EmptyStateView
@@ -49,27 +49,37 @@ fun ClientManagementScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle side effects
     LaunchedEffect(Unit) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 is ClientManagementEffect.ShowToast -> {
-                    Logger.debug("UI", "Toast: ${effect.message}")
+                    val message = effect.message.toDisplayString()
+                    Logger.debug("UI", "Toast: $message")
+                    snackbarHostState.showSnackbar(
+                        message = message,
+                        duration = SnackbarDuration.Short
+                    )
                 }
                 is ClientManagementEffect.ShowError -> {
-                    Logger.debug("UI", "Error: ${effect.error}")
+                    val message = effect.message.toDisplayString()
+                    Logger.debug("UI", "Error: $message")
                 }
                 else -> { /* Handle other effects */ }
             }
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = PayrollColors.Background
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            color = PayrollColors.Background
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
             // LEFT PANEL - Employees
             EmployeeListPanel(
                 employees = uiState.filteredEmployees,
@@ -113,6 +123,7 @@ fun ClientManagementScreen(
                 onDeleteClient = { viewModel.handleAction(ClientManagementAction.DeleteClient(it)) },
                 onClearError = { viewModel.handleAction(ClientManagementAction.ClearError) }
             )
+            }
         }
     }
 }
@@ -444,7 +455,7 @@ fun ClientTablePanel(
             },
             title = { Text(Strings.ClientManagement.deleteClient) },
             text = {
-                Text(Strings.ClientManagement.confirmDeleteMessage.format(client.name))
+                Text(Strings.ClientManagement.confirmDeleteMessage(client.name))
             },
             confirmButton = {
                 Button(

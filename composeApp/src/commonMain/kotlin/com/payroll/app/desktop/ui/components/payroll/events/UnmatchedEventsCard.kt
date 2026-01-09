@@ -120,7 +120,7 @@ fun UnmatchedEventsCard(
                     )
                     Column {
                         Text(
-                            text = Strings.Payroll.unmatchedEventsLabel.format(unmatchedEvents.size),
+                            text = Strings.Payroll.unmatchedEventsLabel(unmatchedEvents.size),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = Color(0xFFE65100)

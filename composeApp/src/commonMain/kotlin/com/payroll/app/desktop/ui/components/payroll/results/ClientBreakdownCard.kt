@@ -95,14 +95,14 @@ fun ClientBreakdownCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = Strings.Payroll.sessionsLabel.format(client.sessions),
+                            text = Strings.Payroll.sessionsLabel(client.sessions),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = PayrollColors.OnSurface
                         )
                         Text(text = "|", fontSize = 13.sp, color = PayrollColors.DividerColor)
                         Text(
-                            text = Strings.Payroll.paidLabel.format(client.totalRevenue.toEuroString()),
+                            text = Strings.Payroll.paidLabel(client.totalRevenue.toEuroString()),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = PayrollColors.Success
@@ -117,19 +117,19 @@ fun ClientBreakdownCard(
                         ) {
                             if (client.completedSessions > 0) {
                                 SessionBadge(
-                                    label = Strings.Payroll.completedSessionsLabel.format(client.completedSessions),
+                                    label = Strings.Payroll.completedSessionsLabel(client.completedSessions),
                                     color = PayrollColors.Success
                                 )
                             }
                             if (client.pendingSessions > 0) {
                                 SessionBadge(
-                                    label = Strings.Payroll.pendingSessionsLabel.format(client.pendingSessions),
+                                    label = Strings.Payroll.pendingSessionsLabel(client.pendingSessions),
                                     color = Color(0xFF64748B)
                                 )
                             }
                             if (client.paidPendingCount > 0) {
                                 SessionBadge(
-                                    label = Strings.Payroll.paidPreviouslyLabel.format(client.paidPendingCount),
+                                    label = Strings.Payroll.paidPreviouslyLabel(client.paidPendingCount),
                                     color = Color(0xFF10B981)
                                 )
                             }
@@ -171,7 +171,7 @@ fun ClientBreakdownCard(
                     if (hasPaidPending) {
                         PendingNote(
                             icon = "✅",
-                            text = Strings.Payroll.includesPendingPayments.format(
+                            text = Strings.Payroll.includesPendingPayments(
                                 (client.paidPendingCount * client.pricePerSession).toEuroString(),
                                 client.paidPendingCount
                             ),
@@ -188,7 +188,7 @@ fun ClientBreakdownCard(
                     if (hasUnresolved) {
                         PendingNote(
                             icon = "⚠️",
-                            text = Strings.Payroll.clientOwes.format(client.unresolvedPendingCount),
+                            text = Strings.Payroll.clientOwes(client.unresolvedPendingCount),
                             color = PayrollColors.Warning
                         )
                     }

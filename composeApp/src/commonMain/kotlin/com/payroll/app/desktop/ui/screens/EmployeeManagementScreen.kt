@@ -172,7 +172,7 @@ fun EmployeeManagementScreen(
             },
             title = { Text(Strings.EmployeeManagement.deleteEmployee) },
             text = {
-                Text(Strings.EmployeeManagement.confirmDeleteMessage.format(employee.name))
+                Text(Strings.EmployeeManagement.confirmDeleteMessage(employee.name))
             },
             confirmButton = {
                 Button(
@@ -225,7 +225,7 @@ private fun EmployeeManagementHeader(
                 color = PayrollColors.Primary
             )
             Text(
-                text = Strings.Success.employeesLoaded.format(employeeCount),
+                text = Strings.Success.employeesLoaded(employeeCount),
                 fontSize = 14.sp,
                 color = PayrollColors.TextSecondary
             )

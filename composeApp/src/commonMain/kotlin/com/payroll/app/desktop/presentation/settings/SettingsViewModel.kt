@@ -2,8 +2,8 @@ package com.payroll.app.desktop.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.payroll.app.desktop.core.resources.StringMessage
 import com.payroll.app.desktop.core.strings.Strings
-import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.domain.service.DatabaseSyncService
 import com.payroll.app.desktop.presentation.settings.SettingsContract.SettingsAction
 import com.payroll.app.desktop.presentation.settings.SettingsContract.SettingsEffect
@@ -50,8 +50,8 @@ class SettingsViewModel(
 
             result.fold(
                 onSuccess = { response ->
-                    val durationSec = response.durationMs / 1000.0
-                    val message = Strings.Success.syncComplete.format(
+                    val durationSec = String.format("%.1f", response.durationMs / 1000.0)
+                    val message = Strings.Success.syncComplete(
                         response.employeesInserted,
                         response.employeesUpdated,
                         response.clientsInserted,
@@ -64,7 +64,7 @@ class SettingsViewModel(
                         lastSyncResult = message
                     )
 
-                    _effect.emit(SettingsEffect.SyncComplete(message))
+                    _effect.emit(SettingsEffect.SyncComplete(StringMessage.CustomError(message)))
                 },
                 onFailure = { error ->
                     val errorMsg = Strings.Errors.syncFailed.format(error.message ?: "")
@@ -73,7 +73,7 @@ class SettingsViewModel(
                         error = errorMsg
                     )
 
-                    _effect.emit(SettingsEffect.ShowError(errorMsg))
+                    _effect.emit(SettingsEffect.ShowError(StringMessage.CustomError(errorMsg)))
                 }
             )
         }
@@ -91,9 +91,9 @@ class SettingsViewModel(
 
             result.fold(
                 onSuccess = { response ->
-                    val durationSec = response.durationMs / 1000.0
+                    val durationSec = String.format("%.1f", response.durationMs / 1000.0)
                     val message = if (response.employeesFailed > 0 || response.clientsFailed > 0) {
-                        Strings.Success.pushCompleteWithErrors.format(
+                        Strings.Success.pushCompleteWithErrors(
                             response.employeesPushed,
                             response.employeesFailed,
                             response.clientsPushed,
@@ -101,7 +101,7 @@ class SettingsViewModel(
                             durationSec
                         )
                     } else {
-                        Strings.Success.pushComplete.format(
+                        Strings.Success.pushComplete(
                             response.employeesPushed,
                             response.clientsPushed,
                             durationSec
@@ -113,7 +113,7 @@ class SettingsViewModel(
                         lastSyncResult = message
                     )
 
-                    _effect.emit(SettingsEffect.SyncComplete(message))
+                    _effect.emit(SettingsEffect.SyncComplete(StringMessage.CustomError(message)))
                 },
                 onFailure = { error ->
                     val errorMsg = Strings.Errors.pushFailed.format(error.message ?: "")
@@ -122,7 +122,7 @@ class SettingsViewModel(
                         error = errorMsg
                     )
 
-                    _effect.emit(SettingsEffect.ShowError(errorMsg))
+                    _effect.emit(SettingsEffect.ShowError(StringMessage.CustomError(errorMsg)))
                 }
             )
         }
