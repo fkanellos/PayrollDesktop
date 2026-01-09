@@ -20,9 +20,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
@@ -66,7 +66,6 @@ fun PayrollScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // 🆕 State για confirmation dialog
@@ -111,60 +110,69 @@ fun PayrollScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp)
-                .verticalScroll(scrollState),
+                .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Header with Sync and Refresh buttons
-            PayrollHeader(
-                isLoading = uiState.isLoading,
-                onRefreshClick = { viewModel.handleAction(PayrollAction.RefreshData) }
-            )
+            item {
+                PayrollHeader(
+                    isLoading = uiState.isLoading,
+                    onRefreshClick = { viewModel.handleAction(PayrollAction.RefreshData) }
+                )
+            }
 
             // Main calculation form
-            PayrollCalculationForm(
-                uiState = uiState,
-                onAction = viewModel::handleAction
-            )
+            item {
+                PayrollCalculationForm(
+                    uiState = uiState,
+                    onAction = viewModel::handleAction
+                )
+            }
 
             // Results section με enhanced client breakdown
             uiState.payrollResult?.let { result ->
-                PayrollResults(
-                    result = result,
-                    onExportPdf = { viewModel.handleAction(PayrollAction.ExportToPdf) },
-                    onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) },
-                    onAddClient = { originalTitle, editedName, price, empPrice, compPrice ->
-                        viewModel.handleAction(
-                            PayrollAction.AddUnmatchedClient(
-                                originalEventTitle = originalTitle,
-                                name = editedName,
-                                price = price,
-                                employeePrice = empPrice,
-                                companyPrice = compPrice
+                item {
+                    PayrollResults(
+                        result = result,
+                        onExportPdf = { viewModel.handleAction(PayrollAction.ExportToPdf) },
+                        onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) },
+                        onAddClient = { originalTitle, editedName, price, empPrice, compPrice ->
+                            viewModel.handleAction(
+                                PayrollAction.AddUnmatchedClient(
+                                    originalEventTitle = originalTitle,
+                                    name = editedName,
+                                    price = price,
+                                    employeePrice = empPrice,
+                                    companyPrice = compPrice
+                                )
                             )
-                        )
-                    },
-                    addedClients = uiState.addedClients
-                )
+                        },
+                        addedClients = uiState.addedClients
+                    )
+                }
             }
 
             // Loading state
             if (uiState.isCalculating) {
-                LoadingIndicator(
-                    message = "Υπολογισμός σε εξέλιξη... Ανάκτηση δεδομένων από Google Calendar"
-                )
+                item {
+                    LoadingIndicator(
+                        message = "Υπολογισμός σε εξέλιξη... Ανάκτηση δεδομένων από Google Calendar"
+                    )
+                }
             }
 
             // Error display
             uiState.error?.let { error ->
-                ErrorBanner(
-                    message = error,
-                    onDismiss = { viewModel.handleAction(PayrollAction.ClearError) }
-                )
+                item {
+                    ErrorBanner(
+                        message = error,
+                        onDismiss = { viewModel.handleAction(PayrollAction.ClearError) }
+                    )
+                }
             }
         }
     }
@@ -850,15 +858,20 @@ private fun PayrollResults(
             title = "Αναλυτικά Στοιχεία ανά Πελάτη",
             subtitle = "Λεπτομερής ανάλυση συνεδριών και εσόδων"
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                result.clientBreakdown.forEach { client ->
-                    ClientBreakdownCard(client)
-                }
-
-                if (result.clientBreakdown.isEmpty()) {
-                    EmptyClientBreakdownCard()
+            if (result.clientBreakdown.isEmpty()) {
+                EmptyClientBreakdownCard()
+            } else {
+                // 🚀 PERFORMANCE: LazyColumn with items() for efficient rendering of large lists
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 600.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = result.clientBreakdown,
+                        key = { client -> client.clientName } // Unique key for recomposition optimization
+                    ) { client ->
+                        ClientBreakdownCard(client)
+                    }
                 }
             }
         }

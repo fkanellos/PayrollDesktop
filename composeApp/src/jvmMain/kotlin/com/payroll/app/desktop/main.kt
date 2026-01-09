@@ -5,6 +5,7 @@ import androidx.compose.ui.window.application
 import com.payroll.app.desktop.core.di.commonModule
 import com.payroll.app.desktop.core.di.useCaseModule
 import com.payroll.app.desktop.core.di.viewModelModule
+import com.payroll.app.desktop.data.services.DatabaseBackupService
 import com.payroll.app.desktop.di.localModule
 import com.payroll.app.desktop.google.GoogleCredentialProvider
 import org.koin.core.context.startKoin
@@ -87,6 +88,14 @@ fun main() {
 
         Window(
             onCloseRequest = {
+                // 💾 Auto-backup database before exit
+                try {
+                    val backupService = get<DatabaseBackupService>(DatabaseBackupService::class.java)
+                    backupService.autoBackupOnShutdown()
+                } catch (e: Exception) {
+                    System.err.println("⚠️ Warning: Failed to create auto-backup: ${e.message}")
+                }
+
                 // 🔥 FIX RESOURCE LEAK: Shutdown HTTP transport before exit
                 try {
                     val credentialProvider = get<GoogleCredentialProvider>(GoogleCredentialProvider::class.java)

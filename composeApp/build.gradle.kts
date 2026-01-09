@@ -157,6 +157,15 @@ tasks.register<JavaExec>("setupCredentials") {
     workingDir = project.projectDir.parentFile
 }
 
+// Task to test database backup
+tasks.register<JavaExec>("testBackup") {
+    group = "application"
+    description = "Test DatabaseBackupService functionality"
+    mainClass.set("com.payroll.app.desktop.TestBackupKt")
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    workingDir = project.projectDir.parentFile
+}
+
 // 🔒 SECURITY: JAR Signing Task
 // Generates a self-signed certificate and signs the JAR for integrity verification
 tasks.register<Exec>("generateKeystore") {
