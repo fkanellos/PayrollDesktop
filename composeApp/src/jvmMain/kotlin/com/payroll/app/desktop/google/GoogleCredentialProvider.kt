@@ -126,6 +126,9 @@ class GoogleCredentialProvider(
             }
         }
 
+        // 🔒 SECURITY: Ensure tokens directory has secure permissions
+        ensureSecureTokensDirectory()
+
         val flow = GoogleAuthorizationCodeFlow.Builder(
             httpTransport,
             JSON_FACTORY,
@@ -254,6 +257,41 @@ class GoogleCredentialProvider(
      * Check if credentials are set up
      */
     fun hasCredentials(): Boolean = secureStore.hasCredentials()
+
+    /**
+     * 🔒 SECURITY: Ensure tokens directory exists with secure permissions
+     * Prevents other users on the system from reading OAuth tokens
+     */
+    private fun ensureSecureTokensDirectory() {
+        if (!TOKENS_DIR.exists()) {
+            TOKENS_DIR.mkdirs()
+        }
+
+        try {
+            // Remove all permissions for group and others
+            TOKENS_DIR.setReadable(false, false)
+            TOKENS_DIR.setWritable(false, false)
+            TOKENS_DIR.setExecutable(false, false)
+
+            // Grant all permissions to owner only (0700)
+            TOKENS_DIR.setReadable(true, true)
+            TOKENS_DIR.setWritable(true, true)
+            TOKENS_DIR.setExecutable(true, true)
+
+            Logger.info(TAG, "🔒 Set secure permissions (0700) on tokens directory")
+
+            // Also secure any existing token files
+            TOKENS_DIR.listFiles()?.forEach { file ->
+                file.setReadable(false, false)
+                file.setWritable(false, false)
+                file.setExecutable(false, false)
+                file.setReadable(true, true)
+                file.setWritable(true, true)
+            }
+        } catch (e: Exception) {
+            Logger.error(TAG, "⚠️ Could not set directory permissions: ${e.message}")
+        }
+    }
 
     /**
      * 🔥 FIX RESOURCE LEAK: Shutdown HTTP transport to release resources

@@ -90,10 +90,7 @@ class GoogleSheetsService(
             val range = "'$sheetName'!$CLIENT_DATA_RANGE"
 
             Logger.info(TAG, "Writing to Google Sheets")
-            Logger.debug(TAG, "Spreadsheet: $spreadsheetId")
-            Logger.debug(TAG, "Sheet/Tab: $sheetName")
-            Logger.debug(TAG, "Range: $range")
-            Logger.debug(TAG, "Data: ${client.name} | €${client.price} | €${client.employeePrice} | €${client.companyPrice}")
+            // 🔒 SECURITY: Don't log spreadsheet IDs or sensitive data
 
             val result = RetryUtils.retryWithBackoff {
                 service.spreadsheets().values()

@@ -25,6 +25,8 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // JitPack for SQLCipher JDBC driver
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

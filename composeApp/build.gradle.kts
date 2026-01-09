@@ -103,7 +103,13 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            // 🔒 SECURITY: Enable code minification and obfuscation
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -149,4 +155,119 @@ tasks.register<JavaExec>("setupCredentials") {
     mainClass.set("com.payroll.app.desktop.SetupCredentialsKt")
     classpath = sourceSets["jvmMain"].runtimeClasspath
     workingDir = project.projectDir.parentFile
+}
+
+// 🔒 SECURITY: JAR Signing Task
+// Generates a self-signed certificate and signs the JAR for integrity verification
+tasks.register<Exec>("generateKeystore") {
+    group = "security"
+    description = "Generate self-signed keystore for JAR signing"
+
+    val keystoreFile = file("${project.buildDir}/keystore/payroll-desktop.jks")
+
+    doFirst {
+        keystoreFile.parentFile.mkdirs()
+    }
+
+    commandLine(
+        "keytool",
+        "-genkeypair",
+        "-alias", "payroll-desktop",
+        "-keyalg", "RSA",
+        "-keysize", "2048",
+        "-validity", "3650",
+        "-keystore", keystoreFile.absolutePath,
+        "-storepass", "changeit",
+        "-keypass", "changeit",
+        "-dname", "CN=Payroll Desktop, OU=IT, O=PayrollDesktop, L=Athens, ST=Attica, C=GR"
+    )
+
+    onlyIf { !keystoreFile.exists() }
+}
+
+// Sign the JAR file after build
+tasks.register<Exec>("signJar") {
+    group = "security"
+    description = "Sign the application JAR with keystore"
+    dependsOn("generateKeystore", "jvmJar")
+
+    val keystoreFile = file("${project.buildDir}/keystore/payroll-desktop.jks")
+    val jarFile = tasks.named<Jar>("jvmJar").get().archiveFile.get().asFile
+
+    commandLine(
+        "jarsigner",
+        "-keystore", keystoreFile.absolutePath,
+        "-storepass", "changeit",
+        "-keypass", "changeit",
+        "-signedjar", jarFile.absolutePath,
+        jarFile.absolutePath,
+        "payroll-desktop"
+    )
+
+    doLast {
+        println("✅ JAR signed successfully: ${jarFile.name}")
+    }
+}
+
+// Verify JAR signature
+tasks.register<Exec>("verifyJarSignature") {
+    group = "security"
+    description = "Verify the JAR signature"
+    dependsOn("signJar")
+
+    val jarFile = tasks.named<Jar>("jvmJar").get().archiveFile.get().asFile
+
+    commandLine(
+        "jarsigner",
+        "-verify",
+        "-verbose",
+        "-certs",
+        jarFile.absolutePath
+    )
+}
+
+// 🔒 SECURITY: Create obfuscated JAR documentation
+// Note: For full ProGuard integration, use gradle-proguard-plugin
+// This is a documentation task showing how to use ProGuard manually
+tasks.register("obfuscateJarInfo") {
+    group = "security"
+    description = "Show instructions for JAR obfuscation with ProGuard"
+
+    doLast {
+        println("""
+        ╔════════════════════════════════════════════════════════════════╗
+        ║  🔒 JAR OBFUSCATION WITH PROGUARD                              ║
+        ╚════════════════════════════════════════════════════════════════╝
+
+        ProGuard configuration: proguard-desktop.pro
+
+        To obfuscate the JAR manually:
+
+        1. Download ProGuard:
+           https://github.com/Guardsquare/proguard/releases
+
+        2. Run ProGuard:
+           java -jar proguard.jar @proguard-desktop.pro \
+             -injars build/libs/composeApp-jvm.jar \
+             -outjars build/libs/composeApp-jvm-obfuscated.jar \
+             -libraryjars <java.home>/jmods/java.base.jmod
+
+        3. Verify obfuscation:
+           unzip -l build/libs/composeApp-jvm-obfuscated.jar | grep "\.class"
+           (Class names should be shortened: a.class, b.class, etc.)
+
+        4. Sign the obfuscated JAR:
+           ./gradlew signJar
+
+        ════════════════════════════════════════════════════════════════
+
+        🔒 Security Benefits:
+        ✓ Obfuscated class/method names (harder to reverse engineer)
+        ✓ Removed debug logging
+        ✓ Optimized bytecode (smaller JAR size)
+        ✓ Protected sensitive business logic
+
+        ════════════════════════════════════════════════════════════════
+        """.trimIndent())
+    }
 }

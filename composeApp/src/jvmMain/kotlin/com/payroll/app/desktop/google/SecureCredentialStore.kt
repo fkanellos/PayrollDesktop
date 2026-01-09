@@ -78,10 +78,6 @@ class SecureCredentialStore {
             val clientSecretMatch = Regex(""""client_secret"\s*:\s*"([^"]+)"""").find(jsonContent)
             val projectIdMatch = Regex(""""project_id"\s*:\s*"([^"]+)"""").find(jsonContent)
 
-            Logger.debug(TAG, "clientIdMatch: ${clientIdMatch != null}")
-            Logger.debug(TAG, "clientSecretMatch: ${clientSecretMatch != null}")
-            Logger.debug(TAG, "projectIdMatch: ${projectIdMatch != null}")
-
             if (clientIdMatch != null && clientSecretMatch != null) {
                 val clientId = clientIdMatch.groupValues[1]
                 val clientSecret = clientSecretMatch.groupValues[1]
@@ -93,7 +89,7 @@ class SecureCredentialStore {
                 true
             } else {
                 Logger.error(TAG, "Invalid credentials.json format")
-                Logger.debug(TAG, "First 200 chars: ${jsonContent.take(200)}")
+                // 🔒 SECURITY: Don't log file content
                 false
             }
         } catch (e: Exception) {
