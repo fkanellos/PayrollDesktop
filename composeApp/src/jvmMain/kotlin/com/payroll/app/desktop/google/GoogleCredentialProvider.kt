@@ -64,12 +64,36 @@ class GoogleCredentialProvider(
     private val secureStore = SecureCredentialStore()
     private var credential: Credential? = null
 
+    /**
+     * 🔥 HIGH FIX: Fail-fast initialization with clear error messages
+     * Old behavior: Silent null credential → mysterious NPEs later
+     * New behavior: Fail immediately with actionable error message
+     */
     init {
         try {
             credential = loadCredential()
+            Logger.info(TAG, "✅ Google credentials loaded successfully")
+        } catch (e: RuntimeException) {
+            // Credential errors should fail-fast with clear messages
+            Logger.error(TAG, "❌ CRITICAL: Failed to load Google credentials", e)
+            Logger.error(TAG, "   Error: ${e.message}")
+            Logger.error(TAG, "")
+            Logger.error(TAG, "   🔧 Setup Instructions:")
+            Logger.error(TAG, "   1. Get credentials.json from Google Cloud Console")
+            Logger.error(TAG, "      → https://console.cloud.google.com/")
+            Logger.error(TAG, "   2. Place it in: ~/.payroll-app/credentials.json")
+            Logger.error(TAG, "   3. Run the app to import it")
+            Logger.error(TAG, "")
+            throw IllegalStateException(
+                "Google API credentials not configured. " +
+                "See console output for setup instructions.", e
+            )
         } catch (e: Exception) {
-            Logger.error(TAG, "Failed to load credentials", e)
-            Logger.warning(TAG, "Please run the setup to import Google OAuth credentials")
+            // Unexpected errors should also fail-fast
+            Logger.error(TAG, "❌ CRITICAL: Unexpected error during credential initialization", e)
+            throw IllegalStateException(
+                "Failed to initialize Google credentials: ${e.message}", e
+            )
         }
     }
 
@@ -130,9 +154,16 @@ class GoogleCredentialProvider(
 
     /**
      * Get Google Calendar service
+     *
+     * 🔥 HIGH FIX: Fail-fast validation instead of returning null
+     * Now throws IllegalStateException with clear error if credentials missing
      */
-    fun getCalendarService(): Calendar? {
-        val cred = credential ?: return null
+    fun getCalendarService(): Calendar {
+        val cred = credential
+            ?: throw IllegalStateException(
+                "Cannot create Calendar service: Google credentials not initialized. " +
+                "Please run setup to import credentials."
+            )
 
         // Auto-refresh if token is expired or about to expire
         try {
@@ -152,9 +183,16 @@ class GoogleCredentialProvider(
 
     /**
      * Get Google Sheets service
+     *
+     * 🔥 HIGH FIX: Fail-fast validation instead of returning null
+     * Now throws IllegalStateException with clear error if credentials missing
      */
-    fun getSheetsService(): Sheets? {
-        val cred = credential ?: return null
+    fun getSheetsService(): Sheets {
+        val cred = credential
+            ?: throw IllegalStateException(
+                "Cannot create Sheets service: Google credentials not initialized. " +
+                "Please run setup to import credentials."
+            )
 
         // Auto-refresh if token is expired or about to expire
         try {

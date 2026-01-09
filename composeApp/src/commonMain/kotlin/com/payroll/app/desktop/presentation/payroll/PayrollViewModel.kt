@@ -38,6 +38,16 @@ import kotlinx.datetime.minus
 interface IMatchConfirmationRepository {
     suspend fun saveConfirmation(eventTitle: String, matchedClientName: String, employeeId: String)
     suspend fun getConfirmedMatch(eventTitle: String, employeeId: String): String?
+
+    /**
+     * 🔥 HIGH FIX: Batch load all confirmed matches for an employee as a Map
+     * Returns Map<EventTitleNormalized, MatchedClientName>
+     *
+     * This avoids N+1 query problem when filtering uncertain matches:
+     * - OLD: 50 uncertain matches = 50 queries
+     * - NEW: 50 uncertain matches = 1 batch query + in-memory lookup
+     */
+    suspend fun getAllConfirmedMatchesMap(employeeId: String): Map<String, String>
 }
 
 class PayrollViewModel(

@@ -76,6 +76,10 @@ class PayrollCalculationUseCase(
 
     /**
      * Filter out matches that have already been confirmed or rejected
+     *
+     * 🔥 HIGH FIX: Batch load all confirmations once to avoid N+1 query
+     * - OLD: 50 uncertain matches = 50 individual database queries
+     * - NEW: 50 uncertain matches = 1 batch query + in-memory Map lookups
      */
     private suspend fun filterUncertainMatches(
         uncertainMatches: List<UncertainMatch>,
@@ -83,11 +87,13 @@ class PayrollCalculationUseCase(
     ): List<UncertainMatch> {
         Logger.debug(TAG, "Filtering ${uncertainMatches.size} uncertain matches")
 
+        // 🔥 FIX N+1: Batch load all confirmations once
+        val confirmedMatches = matchConfirmationRepository.getAllConfirmedMatchesMap(employeeId)
+
         return uncertainMatches.filter { match ->
-            val confirmed = matchConfirmationRepository.getConfirmedMatch(
-                eventTitle = match.eventTitle,
-                employeeId = employeeId
-            )
+            // Normalize the event title for lookup (same normalization as in repository)
+            val normalized = com.payroll.app.desktop.core.utils.StringNormalizer.normalize(match.eventTitle)
+            val confirmed = confirmedMatches[normalized]
 
             val shouldKeep = confirmed == null
 
