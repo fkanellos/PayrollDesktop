@@ -495,7 +495,7 @@ class PayrollViewModel(
                         } else {
                             emitSideEffect(
                                 PayrollEffect.ShowError(
-                                    StringMessage.CustomError(Strings.Payroll.employeeHasNoClients.format(employee.name))
+                                    StringMessage.CustomError(Strings.Payroll.employeeHasNoClients(employee.name))
                                 )
                             )
                         }
@@ -503,7 +503,7 @@ class PayrollViewModel(
                     is RepositoryResult.Error -> {
                         emitSideEffect(
                             PayrollEffect.ShowError(
-                                StringMessage.CustomError(Strings.Payroll.errorCheckingClients.format(employee.name))
+                                StringMessage.CustomError(Strings.Payroll.errorCheckingClients(employee.name))
                             )
                         )
                     }

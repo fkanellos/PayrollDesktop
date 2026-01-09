@@ -55,26 +55,26 @@ object ValidationUtils {
     ): ValidationResult<Double> {
         // Check if empty
         if (input.isBlank()) {
-            return ValidationResult.Error(Strings.Validation.fieldEmpty.format(fieldName))
+            return ValidationResult.Error(Strings.Validation.fieldEmpty(fieldName))
         }
 
         // Try to parse as double
         val value = input.toDoubleOrNull()
-            ?: return ValidationResult.Error(Strings.Validation.fieldMustBeNumber.format(fieldName))
+            ?: return ValidationResult.Error(Strings.Validation.fieldMustBeNumber(fieldName))
 
         // Check if negative
         if (value < minValue) {
-            return ValidationResult.Error(Strings.Validation.fieldMinValue.format(fieldName, minValue))
+            return ValidationResult.Error(Strings.Validation.fieldMinValue(fieldName, minValue.toString()))
         }
 
         // Check if too large
         if (value > maxValue) {
-            return ValidationResult.Error(Strings.Validation.fieldMaxValue.format(fieldName, maxValue))
+            return ValidationResult.Error(Strings.Validation.fieldMaxValue(fieldName, maxValue.toString()))
         }
 
         // Check if NaN or infinite
         if (!value.isFinite()) {
-            return ValidationResult.Error(Strings.Validation.fieldInvalidValue.format(fieldName))
+            return ValidationResult.Error(Strings.Validation.fieldInvalidValue(fieldName))
         }
 
         return ValidationResult.Success(value)
@@ -147,7 +147,7 @@ object ValidationUtils {
 
         if (kotlin.math.abs(sum - totalPrice) > tolerance) {
             return ValidationResult.Error(
-                Strings.Validation.priceSumMismatch.format(sum.toFormattedString(), totalPrice.toFormattedString())
+                Strings.Validation.priceSumMismatch(sum.toFormattedString(), totalPrice.toFormattedString())
             )
         }
 
@@ -187,7 +187,7 @@ object ValidationUtils {
      */
     fun validateNonEmpty(input: String, fieldName: String = Strings.Fields.generic): ValidationResult<String> {
         if (input.isBlank()) {
-            return ValidationResult.Error(Strings.Validation.fieldEmpty.format(fieldName))
+            return ValidationResult.Error(Strings.Validation.fieldEmpty(fieldName))
         }
         return ValidationResult.Success(input.trim())
     }

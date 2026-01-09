@@ -78,7 +78,7 @@ object EmployeeValidator {
             errors.add(
                 ValidationError(
                     field = EmployeeFormFields.SUPERVISION_PRICE,
-                    message = Strings.Validation.supervisionPriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SUPERVISION_PRICE),
+                    message = Strings.Validation.supervisionPriceExceedsMax(ValidationUtils.PriceLimits.MAX_SUPERVISION_PRICE.toString()),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -95,7 +95,7 @@ object EmployeeValidator {
                 errors.add(
                     ValidationError(
                         field = EmployeeFormFields.EMAIL,
-                        message = Strings.Validation.employeeEmailDuplicate.format(employee.email),
+                        message = Strings.Validation.employeeEmailDuplicate(employee.email),
                         code = ErrorCode.DUPLICATE
                     )
                 )

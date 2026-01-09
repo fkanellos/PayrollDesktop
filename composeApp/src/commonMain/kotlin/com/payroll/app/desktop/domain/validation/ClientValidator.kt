@@ -106,7 +106,7 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.PRICE,
-                    message = Strings.Validation.clientPriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SESSION_PRICE),
+                    message = Strings.Validation.clientPriceExceedsMax(ValidationUtils.PriceLimits.MAX_SESSION_PRICE.toString()),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -116,7 +116,7 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.EMPLOYEE_PRICE,
-                    message = Strings.Validation.employeePriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SESSION_PRICE),
+                    message = Strings.Validation.employeePriceExceedsMax(ValidationUtils.PriceLimits.MAX_SESSION_PRICE.toString()),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -126,7 +126,7 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.COMPANY_PRICE,
-                    message = Strings.Validation.companyPriceExceedsMax.format(ValidationUtils.PriceLimits.MAX_SESSION_PRICE),
+                    message = Strings.Validation.companyPriceExceedsMax(ValidationUtils.PriceLimits.MAX_SESSION_PRICE.toString()),
                     code = ErrorCode.EXCEEDS_MAXIMUM
                 )
             )
@@ -137,7 +137,7 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.EMPLOYEE_PRICE,
-                    message = Strings.Validation.employeePriceExceedsTotal.format(client.employeePrice, client.price),
+                    message = Strings.Validation.employeePriceExceedsTotal(client.employeePrice.toString(), client.price.toString()),
                     code = ErrorCode.INVALID_VALUE
                 )
             )
@@ -147,7 +147,7 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.COMPANY_PRICE,
-                    message = Strings.Validation.companyPriceExceedsTotal.format(client.companyPrice, client.price),
+                    message = Strings.Validation.companyPriceExceedsTotal(client.companyPrice.toString(), client.price.toString()),
                     code = ErrorCode.INVALID_VALUE
                 )
             )
@@ -162,7 +162,12 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.COMPANY_PRICE,
-                    message = Strings.Validation.pricesMismatch.format(client.employeePrice, client.companyPrice, client.price, sum),
+                    message = Strings.Validation.pricesMismatch(
+                        client.employeePrice.toString(),
+                        client.companyPrice.toString(),
+                        client.price.toString(),
+                        sum.toString()
+                    ),
                     code = ErrorCode.PRICE_MISMATCH
                 )
             )
@@ -179,7 +184,7 @@ object ClientValidator {
             errors.add(
                 ValidationError(
                     field = ClientFormFields.NAME,
-                    message = Strings.Validation.clientNameDuplicate.format(client.name),
+                    message = Strings.Validation.clientNameDuplicate(client.name),
                     code = ErrorCode.DUPLICATE
                 )
             )

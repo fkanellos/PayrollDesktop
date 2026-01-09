@@ -88,10 +88,10 @@ fun StringMessage.toDisplayString(): String {
         is StringMessage.EmployeesLoaded -> "✅ Φορτώθηκαν $count εργαζόμενοι"
         is StringMessage.EmployeeSelectedWithClients -> "Επιλέχθηκε $name - $clientCount πελάτες"
         is StringMessage.UncertainMatchesFound -> "⚠️ Βρέθηκαν $count αβέβαιες αντιστοιχίες - επιβεβαιώστε τις"
-        is StringMessage.CalculationComplete -> "✅ Υπολογισμός ολοκληρώθηκε! $sessions συνεδρίες, €%.2f".format(revenue)
+        is StringMessage.CalculationComplete -> "✅ Υπολογισμός ολοκληρώθηκε! $sessions συνεδρίες, €${String.format("%.2f", revenue)}"
         is StringMessage.MatchConfirmed -> "✅ Match επιβεβαιώθηκε: '$eventTitle' → '$clientName'"
         is StringMessage.MatchRejected -> "❌ Match απορρίφθηκε: '$eventTitle'"
-        is StringMessage.ClientAddSuccess -> "✅ Πελάτης '$clientName' προστέθηκε (€%.2f, Εργαζόμενος: €%.2f, Εταιρία: €%.2f)".format(price, employeePrice, companyPrice)
+        is StringMessage.ClientAddSuccess -> "✅ Πελάτης '$clientName' προστέθηκε (€${String.format("%.2f", price)}, Εργαζόμενος: €${String.format("%.2f", employeePrice)}, Εταιρία: €${String.format("%.2f", companyPrice)})"
         is StringMessage.PdfCreated -> "PDF δημιουργήθηκε!\nΣώθηκε: $filePath"
         is StringMessage.ExcelCreated -> "Excel δημιουργήθηκε!\nΣώθηκε: $filePath"
         is StringMessage.SyncComplete -> "✅ Συγχρονισμός ολοκληρώθηκε!\nΕργαζόμενοι: +$employeesInserted, ~$employeesUpdated | Πελάτες: +$clientsInserted, ~$clientsUpdated"

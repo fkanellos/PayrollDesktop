@@ -359,7 +359,7 @@ class ClientManagementViewModel(
                         updateState { currentState ->
                             currentState.copy(
                                 isSyncing = false,
-                                error = Strings.Errors.syncFailed.format(result.exception.message)
+                                error = Strings.Errors.syncFailed(result.exception.message ?: "")
                             )
                         }
                         emitSideEffect(
@@ -371,7 +371,7 @@ class ClientManagementViewModel(
                 updateState { currentState ->
                     currentState.copy(
                         isSyncing = false,
-                        error = Strings.Errors.syncFailed.format(e.message ?: "Unknown error")
+                        error = Strings.Errors.syncFailed(e.message ?: "Unknown error")
                     )
                 }
                 emitSideEffect(

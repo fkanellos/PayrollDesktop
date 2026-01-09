@@ -67,7 +67,7 @@ class SettingsViewModel(
                     _effect.emit(SettingsEffect.SyncComplete(StringMessage.CustomError(message)))
                 },
                 onFailure = { error ->
-                    val errorMsg = Strings.Errors.syncFailed.format(error.message ?: "")
+                    val errorMsg = Strings.Errors.syncFailed(error.message ?: "")
                     _state.value = _state.value.copy(
                         isSyncingFromSheets = false,
                         error = errorMsg
@@ -116,7 +116,7 @@ class SettingsViewModel(
                     _effect.emit(SettingsEffect.SyncComplete(StringMessage.CustomError(message)))
                 },
                 onFailure = { error ->
-                    val errorMsg = Strings.Errors.pushFailed.format(error.message ?: "")
+                    val errorMsg = Strings.Errors.pushFailed(error.message ?: "")
                     _state.value = _state.value.copy(
                         isPushingToSheets = false,
                         error = errorMsg
