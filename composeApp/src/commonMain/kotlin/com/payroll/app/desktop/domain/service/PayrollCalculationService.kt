@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.domain.service
 
+import com.payroll.app.desktop.core.utils.roundToCents
 import com.payroll.app.desktop.domain.models.*
 import kotlinx.datetime.LocalDateTime
 
@@ -126,9 +127,9 @@ class PayrollCalculationService(
 
             if (validEvents.isNotEmpty()) {
                 val sessionsCount = validEvents.size
-                val clientRevenue = sessionsCount * client.price
-                val employeeEarnings = sessionsCount * client.employeePrice
-                val companyEarnings = sessionsCount * client.companyPrice
+                val clientRevenue = (sessionsCount * client.price).roundToCents()
+                val employeeEarnings = (sessionsCount * client.employeePrice).roundToCents()
+                val companyEarnings = (sessionsCount * client.companyPrice).roundToCents()
 
                 val entry = PayrollEntry(
                     clientName = clientName,
@@ -144,9 +145,9 @@ class PayrollCalculationService(
 
                 entries.add(entry)
                 totalSessions += sessionsCount
-                totalRevenue += clientRevenue
-                totalEmployeeEarnings += employeeEarnings
-                totalCompanyEarnings += companyEarnings
+                totalRevenue = (totalRevenue + clientRevenue).roundToCents()
+                totalEmployeeEarnings = (totalEmployeeEarnings + employeeEarnings).roundToCents()
+                totalCompanyEarnings = (totalCompanyEarnings + companyEarnings).roundToCents()
             }
         }
 
@@ -161,9 +162,9 @@ class PayrollCalculationService(
 
             if (allSupervisionEvents.isNotEmpty()) {
                 val sessionsCount = allSupervisionEvents.size
-                val clientRevenue = sessionsCount * supervisionConfig.price
-                val employeeEarnings = sessionsCount * supervisionConfig.employeePrice
-                val companyEarnings = sessionsCount * supervisionConfig.companyPrice
+                val clientRevenue = (sessionsCount * supervisionConfig.price).roundToCents()
+                val employeeEarnings = (sessionsCount * supervisionConfig.employeePrice).roundToCents()
+                val companyEarnings = (sessionsCount * supervisionConfig.companyPrice).roundToCents()
 
                 val entry = PayrollEntry(
                     clientName = "Εποπτεία (Supervision)",
@@ -179,9 +180,9 @@ class PayrollCalculationService(
 
                 entries.add(entry)
                 totalSessions += sessionsCount
-                totalRevenue += clientRevenue
-                totalEmployeeEarnings += employeeEarnings
-                totalCompanyEarnings += companyEarnings
+                totalRevenue = (totalRevenue + clientRevenue).roundToCents()
+                totalEmployeeEarnings = (totalEmployeeEarnings + employeeEarnings).roundToCents()
+                totalCompanyEarnings = (totalCompanyEarnings + companyEarnings).roundToCents()
             }
         }
 

@@ -180,22 +180,22 @@ fun PayrollScreen(
         )
     }
     // 🆕 Sheets Confirmation Dialog
-    if (showSheetsConfirmation && sheetsConfirmationData != null) {
-        val (payrollId, message, isUpdate) = sheetsConfirmationData!!
-
-        SheetsConfirmationDialog(
-            message = message,
-            isUpdate = isUpdate,
-            onConfirm = {
-                viewModel.confirmAndSyncToSheets(payrollId)
-                showSheetsConfirmation = false
-                sheetsConfirmationData = null
-            },
-            onDismiss = {
-                showSheetsConfirmation = false
-                sheetsConfirmationData = null
-            }
-        )
+    if (showSheetsConfirmation) {
+        sheetsConfirmationData?.let { (payrollId, message, isUpdate) ->
+            SheetsConfirmationDialog(
+                message = message,
+                isUpdate = isUpdate,
+                onConfirm = {
+                    viewModel.confirmAndSyncToSheets(payrollId)
+                    showSheetsConfirmation = false
+                    sheetsConfirmationData = null
+                },
+                onDismiss = {
+                    showSheetsConfirmation = false
+                    sheetsConfirmationData = null
+                }
+            )
+        }
     }
 
     // 🆕 Match Confirmation Dialog (Paginated)

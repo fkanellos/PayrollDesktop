@@ -114,7 +114,7 @@ fun SettingsScreen(
             )
 
             // Result/Error display
-            if (state.lastSyncResult != null) {
+            state.lastSyncResult?.let { result ->
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -131,14 +131,14 @@ fun SettingsScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = state.lastSyncResult!!,
+                            text = result,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
             }
 
-            if (state.error != null) {
+            state.error?.let { errorMessage ->
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
@@ -155,7 +155,7 @@ fun SettingsScreen(
                             tint = MaterialTheme.colorScheme.error
                         )
                         Text(
-                            text = state.error!!,
+                            text = errorMessage,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
