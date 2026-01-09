@@ -22,6 +22,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -861,15 +862,15 @@ private fun PayrollResults(
             if (result.clientBreakdown.isEmpty()) {
                 EmptyClientBreakdownCard()
             } else {
-                // 🚀 PERFORMANCE: LazyColumn with items() for efficient rendering of large lists
+                // 🚀 PERFORMANCE: LazyColumn with itemsIndexed() for efficient rendering of large lists
                 LazyColumn(
                     modifier = Modifier.heightIn(max = 600.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(
+                    itemsIndexed(
                         items = result.clientBreakdown,
-                        key = { client -> client.clientName } // Unique key for recomposition optimization
-                    ) { client ->
+                        key = { index, client -> "$index-${client.clientName}" } // Composite key (index + name) for uniqueness
+                    ) { _, client ->
                         ClientBreakdownCard(client)
                     }
                 }

@@ -97,8 +97,13 @@ class DatabaseBackupService {
     /**
      * Restore database from a backup file
      *
+     * ⚠️ **WARNING**: App restart required after restore!
+     * The SQLDelight driver keeps the database file locked while the app is running.
+     * This method will create a safety backup of the current database, but the
+     * restored data will only take effect after restarting the application.
+     *
      * @param backupFile The backup file to restore from
-     * @return True if restore was successful
+     * @return True if restore was successful (but app restart still required)
      */
     fun restoreFromBackup(backupFile: File): Boolean {
         return try {
@@ -180,6 +185,11 @@ class DatabaseBackupService {
     /**
      * Auto-backup on app shutdown
      * Should be called from main() or app shutdown hook
+     *
+     * ℹ️ **Note**: This backup captures the database state at shutdown time.
+     * While the database is typically idle during shutdown, there is a theoretical
+     * possibility of capturing mid-transaction state if a transaction is in progress.
+     * In practice, this is very unlikely as most transactions are fast (<100ms).
      */
     fun autoBackupOnShutdown() {
         Logger.info(TAG, "🔄 Creating auto-backup on shutdown...")

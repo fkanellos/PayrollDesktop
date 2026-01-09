@@ -13,7 +13,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -297,6 +299,16 @@ fun ClientTablePanel(
     onDeleteClient: (Long) -> Unit,
     onClearError: () -> Unit
 ) {
+    // 🚀 SCROLL TO TOP: Remember scroll state for clients list
+    val clientsListState = rememberLazyListState()
+
+    // 🚀 SCROLL TO TOP: Auto-scroll to top when employee changes
+    LaunchedEffect(employee?.id) {
+        if (employee != null && clients.isNotEmpty()) {
+            clientsListState.scrollToItem(0)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -412,6 +424,7 @@ fun ClientTablePanel(
         } else {
             ClientsTable(
                 clients = clients,
+                listState = clientsListState,
                 onEditClient = onShowEditDialog,
                 onDeleteClient = onShowDeleteConfirmation
             )
@@ -520,6 +533,7 @@ fun EmptyClientsView() {
 @Composable
 fun ClientsTable(
     clients: List<Client>,
+    listState: LazyListState = rememberLazyListState(),
     onEditClient: (Client) -> Unit,
     onDeleteClient: (Client) -> Unit
 ) {
@@ -580,7 +594,7 @@ fun ClientsTable(
             HorizontalDivider(color = PayrollColors.DividerColor)
 
             // Table Rows
-            LazyColumn {
+            LazyColumn(state = listState) {
                 items(clients) { client ->
                     ClientRow(
                         client = client,
