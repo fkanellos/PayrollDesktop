@@ -74,40 +74,40 @@
     <string name="check_calendar_entries">Ελέγξτε αν υπάρχουν εγγραφές στο Google Calendar για την επιλεγμένη περίοδο</string>
 
     <!-- Client Breakdown -->
-    <string name="sessions">Sessions: %d</string>
-    <string name="paid">Paid: %s</string>
-    <string name="completed">Completed: %d</string>
-    <string name="pending">Pending: %d</string>
-    <string name="paid_prev">Paid prev: %d</string>
+    <string name="sessions">Συνεδρίες: %d</string>
+    <string name="paid">Πληρωμένες: %s</string>
+    <string name="completed">Ολοκληρωμένες: %d</string>
+    <string name="pending">Εκκρεμείς: %d</string>
+    <string name="paid_prev">Προπληρωμένες: %d</string>
     <string name="employee_share">Μερίδιο εργαζομένου</string>
     <string name="price_per_session">Τιμή/Συνεδρία</string>
     <string name="employee_price">Εργαζόμενος</string>
     <string name="company_price">Εταιρία</string>
-    <string name="events_count">Events (%d)</string>
+    <string name="events_count">Συμβάντα (%d)</string>
     <string name="more_sessions">... και %d ακόμη συνεδρίες</string>
 
     <!-- Session Status -->
-    <string name="completed_status">Completed</string>
-    <string name="pending_payment">Pending Payment</string>
-    <string name="cancelled">Cancelled</string>
-    <string name="paid_for_pending">Paid for pending %s</string>
+    <string name="completed_status">Ολοκληρωμένη</string>
+    <string name="pending_payment">Εκκρεμής Πληρωμή</string>
+    <string name="cancelled">Ακυρωμένη</string>
+    <string name="paid_for_pending">Πληρώθηκε για εκκρεμείς %s</string>
 
     <!-- Pending Notes -->
-    <string name="includes_paid_pending">Includes %s from %d pending payment(s)</string>
-    <string name="pending_will_charge">%d pending (%s) - will charge next time</string>
-    <string name="client_owes_pending">Client still owes %d pending payment(s)</string>
+    <string name="includes_paid_pending">Περιλαμβάνει %s από %d εκκρεμείς πληρωμές</string>
+    <string name="pending_will_charge">%d εκκρεμείς (%s) - θα χρεωθούν την επόμενη φορά</string>
+    <string name="client_owes_pending">Ο πελάτης χρωστάει %d εκκρεμείς πληρωμές</string>
 
     <!-- Unmatched Events -->
-    <string name="unmatched_events">Unmatched Events (%d)</string>
-    <string name="unmatched_events_hint">Click + to add client with default prices</string>
-    <string name="manage_clients">Manage Clients</string>
-    <string name="default_prices">Default prices:</string>
-    <string name="total_price">Total: €%s</string>
-    <string name="employee_price_label">Employee: €%s</string>
-    <string name="company_price_label">Company: €%s</string>
-    <string name="sessions_count">×%d sessions</string>
-    <string name="clients_added">%d client(s) added. Re-calculate to update results.</string>
-    <string name="all_clients_added">All unmatched clients have been added! Re-calculate to see updated results.</string>
+    <string name="unmatched_events">Μη Αντιστοιχισμένα Συμβάντα (%d)</string>
+    <string name="unmatched_events_hint">Πατήστε + για να προσθέσετε πελάτη με προεπιλεγμένες τιμές</string>
+    <string name="manage_clients">Διαχείριση Πελατών</string>
+    <string name="default_prices">Προεπιλεγμένες τιμές:</string>
+    <string name="total_price">Σύνολο: €%s</string>
+    <string name="employee_price_label">Εργαζόμενος: €%s</string>
+    <string name="company_price_label">Εταιρία: €%s</string>
+    <string name="sessions_count">×%d συνεδρίες</string>
+    <string name="clients_added">%d πελάτες προστέθηκαν. Επανυπολογίστε για να δείτε τα ενημερωμένα αποτελέσματα.</string>
+    <string name="all_clients_added">Όλοι οι μη αντιστοιχισμένοι πελάτες προστέθηκαν! Επανυπολογίστε για να δείτε τα ενημερωμένα αποτελέσματα.</string>
 
     <!-- Export -->
     <string name="export_results">Εξαγωγή Αποτελεσμάτων</string>
@@ -167,7 +167,9 @@
 
     <!-- Messages & Toasts -->
     <string name="creating_pdf">Δημιουργία PDF από backend...</string>
+    <string name="creating_excel">Δημιουργία Excel...</string>
     <string name="pdf_created">PDF δημιουργήθηκε!\nΣώθηκε: %s</string>
+    <string name="excel_created">Excel δημιουργήθηκε!\nΣώθηκε: %s</string>
     <string name="error_downloading_pdf">Σφάλμα λήψης PDF: %s</string>
     <string name="error_exporting_pdf">Σφάλμα εξαγωγής PDF: %s</string>
     <string name="payroll_id_not_found">Δεν βρέθηκε ID payroll</string>
@@ -179,6 +181,25 @@
     <string name="client_updated">Πελάτης ενημερώθηκε</string>
     <string name="client_deleted">Πελάτης διαγράφηκε</string>
     <string name="client_added">Πελάτης προστέθηκε</string>
+
+    <!-- Payroll Calculations -->
+    <string name="syncing_database">Συγχρονισμός βάσης δεδομένων...</string>
+    <string name="refreshing_data">Ανανέωση δεδομένων...</string>
+    <string name="starting_calculation">Έναρξη υπολογισμού μισθοδοσίας...</string>
+    <string name="retrying_calculation">Επανάληψη υπολογισμού...</string>
+    <string name="refresh_complete">Ανανέωση ολοκληρώθηκε!</string>
+    <string name="all_matches_confirmed">Όλα τα matches επιβεβαιώθηκαν! Επανυπολογισμός...</string>
+    <string name="all_matches_processed">Όλα τα matches επεξεργάστηκαν! Επανυπολογισμός...</string>
+    <string name="large_date_range_warning">⚠️ Μεγάλο εύρος ημερομηνιών - ο υπολογισμός μπορεί να πάρει λίγο χρόνο</string>
+
+    <string name="employees_loaded">✅ Φορτώθηκαν %d εργαζόμενοι</string>
+    <string name="employee_selected_with_clients">Επιλέχθηκε %1$s - %2$d πελάτες</string>
+    <string name="uncertain_matches_found">⚠️ Βρέθηκαν %d αβέβαιες αντιστοιχίες - επιβεβαιώστε τις</string>
+    <string name="calculation_complete">✅ Υπολογισμός ολοκληρώθηκε! %1$d συνεδρίες, €%2$.2f</string>
+    <string name="match_confirmed">✅ Match επιβεβαιώθηκε: \'%1$s\' → \'%2$s\'</string>
+    <string name="match_rejected">❌ Match απορρίφθηκε: \'%s\'</string>
+    <string name="client_add_success">✅ Πελάτης \'%1$s\' προστέθηκε (€%2$.2f, Εργαζόμενος: €%3$.2f, Εταιρία: €%4$.2f)</string>
+    <string name="sync_complete">✅ Συγχρονισμός ολοκληρώθηκε!\nΕργαζόμενοι: +%1$d, ~%2$d | Πελάτες: +%3$d, ~%4$d</string>
 
     <!-- Warnings -->
     <string name="warning">Προειδοποίηση</string>

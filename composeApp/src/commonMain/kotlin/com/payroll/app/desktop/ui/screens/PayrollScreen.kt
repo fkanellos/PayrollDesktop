@@ -3,6 +3,7 @@
 package com.payroll.app.desktop.ui.screens
 
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.resources.toDisplayString
 import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.ui.components.shared.errors.ErrorBanner
@@ -66,6 +67,7 @@ fun PayrollScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // 🆕 State για confirmation dialog
     var showSheetsConfirmation by remember { mutableStateOf(false) }
@@ -78,12 +80,18 @@ fun PayrollScreen(
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 is PayrollEffect.ShowToast -> {
-                    // Toast messages logged for debugging
-                    Logger.debug("UI", "Toast: ${effect.message}")
+                    // 🔥 NEW: Format message in UI layer
+                    val message = effect.message.toDisplayString()
+                    Logger.debug("UI", "Toast: $message")
+                    snackbarHostState.showSnackbar(
+                        message = message,
+                        duration = SnackbarDuration.Short
+                    )
                 }
                 is PayrollEffect.ShowError -> {
                     // Error dialog handled via state (showErrorDialog)
-                    Logger.debug("UI", "Error: ${effect.error}")
+                    val message = effect.message.toDisplayString()
+                    Logger.debug("UI", "Error: $message")
                 }
                 // 🆕 Handle confirmation request
                 is PayrollEffect.RequestSheetsConfirmation -> {
@@ -99,59 +107,65 @@ fun PayrollScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        // Header with Sync and Refresh buttons
-        PayrollHeader(
-            isLoading = uiState.isLoading,
-            onRefreshClick = { viewModel.handleAction(PayrollAction.RefreshData) }
-        )
+    // Scaffold for Snackbar support
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(24.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // Header with Sync and Refresh buttons
+            PayrollHeader(
+                isLoading = uiState.isLoading,
+                onRefreshClick = { viewModel.handleAction(PayrollAction.RefreshData) }
+            )
 
-        // Main calculation form
-        PayrollCalculationForm(
-            uiState = uiState,
-            onAction = viewModel::handleAction
-        )
+            // Main calculation form
+            PayrollCalculationForm(
+                uiState = uiState,
+                onAction = viewModel::handleAction
+            )
 
-        // Results section με enhanced client breakdown
-        uiState.payrollResult?.let { result ->
-            PayrollResults(
-                result = result,
-                onExportPdf = { viewModel.handleAction(PayrollAction.ExportToPdf) },
-                onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) },
-                onAddClient = { originalTitle, editedName, price, empPrice, compPrice ->
-                    viewModel.handleAction(
-                        PayrollAction.AddUnmatchedClient(
-                            originalEventTitle = originalTitle,
-                            name = editedName,
-                            price = price,
-                            employeePrice = empPrice,
-                            companyPrice = compPrice
+            // Results section με enhanced client breakdown
+            uiState.payrollResult?.let { result ->
+                PayrollResults(
+                    result = result,
+                    onExportPdf = { viewModel.handleAction(PayrollAction.ExportToPdf) },
+                    onExportExcel = { viewModel.handleAction(PayrollAction.ExportToExcel) },
+                    onAddClient = { originalTitle, editedName, price, empPrice, compPrice ->
+                        viewModel.handleAction(
+                            PayrollAction.AddUnmatchedClient(
+                                originalEventTitle = originalTitle,
+                                name = editedName,
+                                price = price,
+                                employeePrice = empPrice,
+                                companyPrice = compPrice
+                            )
                         )
-                    )
-                },
-                addedClients = uiState.addedClients
-            )
-        }
+                    },
+                    addedClients = uiState.addedClients
+                )
+            }
 
-        // Loading state
-        if (uiState.isCalculating) {
-            LoadingIndicator(
-                message = "Υπολογισμός σε εξέλιξη... Ανάκτηση δεδομένων από Google Calendar"
-            )
-        }
+            // Loading state
+            if (uiState.isCalculating) {
+                LoadingIndicator(
+                    message = "Υπολογισμός σε εξέλιξη... Ανάκτηση δεδομένων από Google Calendar"
+                )
+            }
 
-        // Error display
-        uiState.error?.let { error ->
-            ErrorBanner(
-                message = error,
-                onDismiss = { viewModel.handleAction(PayrollAction.ClearError) }
-            )
+            // Error display
+            uiState.error?.let { error ->
+                ErrorBanner(
+                    message = error,
+                    onDismiss = { viewModel.handleAction(PayrollAction.ClearError) }
+                )
+            }
         }
     }
 

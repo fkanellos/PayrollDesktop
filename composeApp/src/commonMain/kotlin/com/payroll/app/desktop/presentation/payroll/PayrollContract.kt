@@ -116,8 +116,9 @@ sealed class PayrollEffect : UiEffect {
     object NavigateToEmployeeManagement : PayrollEffect()
 
     // User feedback
-    data class ShowToast(val message: String) : PayrollEffect()
-    data class ShowError(val error: String) : PayrollEffect()
+    // 🔥 NEW: Type-safe string resources (ViewModel sends data, UI formats)
+    data class ShowToast(val message: com.payroll.app.desktop.core.resources.StringMessage) : PayrollEffect()
+    data class ShowError(val message: com.payroll.app.desktop.core.resources.StringMessage) : PayrollEffect()
 
     // File operations
     data class SavePdfFile(val filename: String, val data: ByteArray) : PayrollEffect()

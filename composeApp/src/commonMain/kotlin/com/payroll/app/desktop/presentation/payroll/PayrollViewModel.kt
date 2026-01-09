@@ -5,6 +5,7 @@ import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.constants.AppConstants
 import com.payroll.app.desktop.core.export.ExportResult
 import com.payroll.app.desktop.core.logging.Logger
+import com.payroll.app.desktop.core.resources.StringMessage
 import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.core.utils.format
 import com.payroll.app.desktop.data.repositories.PayrollRepository
@@ -157,7 +158,7 @@ class PayrollViewModel(
                     currentState.copy(isCalculating = true, error = null)
                 } else {
                     val errorMessage = getValidationErrorMessage(currentState)
-                    emitSideEffect(PayrollEffect.ShowError(errorMessage))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(errorMessage)))
                     currentState.copy(error = errorMessage)
                 }
             }
@@ -170,9 +171,9 @@ class PayrollViewModel(
             PayrollAction.ExportToPdf -> {
                 currentState.payrollResult?.let { result ->
                     exportToPdf(result)
-                    emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.creatingPdf))
+                    emitSideEffect(PayrollEffect.ShowToast(StringMessage.CreatingPdf))
                 } ?: run {
-                    emitSideEffect(PayrollEffect.ShowError(Strings.Payroll.noResultsToExport))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(Strings.Payroll.noResultsToExport)))
                 }
                 currentState
             }
@@ -180,9 +181,9 @@ class PayrollViewModel(
             PayrollAction.ExportToExcel -> {
                 currentState.payrollResult?.let { result ->
                     exportToExcel(result)
-                    emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.creatingExcel))
+                    emitSideEffect(PayrollEffect.ShowToast(StringMessage.CreatingExcel))
                 } ?: run {
-                    emitSideEffect(PayrollEffect.ShowError(Strings.Payroll.noResultsToExport))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(Strings.Payroll.noResultsToExport)))
                 }
                 currentState
             }
@@ -243,7 +244,7 @@ class PayrollViewModel(
      */
     private fun confirmMatch(match: UncertainMatch, employeeId: String?) {
         if (employeeId == null) {
-            emitSideEffect(PayrollEffect.ShowError("No employee selected"))
+            emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("No employee selected")))
             return
         }
 
@@ -259,19 +260,19 @@ class PayrollViewModel(
 
                     emitSideEffect(
                         PayrollEffect.ShowToast(
-                            Strings.Payroll.matchConfirmed.format(result.eventTitle, result.clientName)
+                            StringMessage.MatchConfirmed(result.eventTitle, result.clientName)
                         )
                     )
 
                     // If all matches are confirmed, recalculate payroll
                     if (uiState.value.uncertainMatches.isEmpty()) {
-                        emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.allMatchesConfirmed))
+                        emitSideEffect(PayrollEffect.ShowToast(StringMessage.AllMatchesConfirmed))
                         delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
                         handleAction(PayrollAction.CalculatePayroll)
                     }
                 }
                 is MatchConfirmationUseCase.ConfirmationResult.Error -> {
-                    emitSideEffect(PayrollEffect.ShowError(result.message))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(result.message)))
                 }
                 else -> {}
             }
@@ -284,7 +285,7 @@ class PayrollViewModel(
     private fun rejectMatch(match: UncertainMatch) {
         val employeeId = uiState.value.selectedEmployee?.id
         if (employeeId == null) {
-            emitSideEffect(PayrollEffect.ShowError("No employee selected"))
+            emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("No employee selected")))
             return
         }
 
@@ -300,19 +301,19 @@ class PayrollViewModel(
 
                     emitSideEffect(
                         PayrollEffect.ShowToast(
-                            Strings.Payroll.matchRejected.format(result.eventTitle)
+                            StringMessage.MatchRejected(result.eventTitle)
                         )
                     )
 
                     // If all matches are processed, recalculate payroll
                     if (uiState.value.uncertainMatches.isEmpty()) {
-                        emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.allMatchesProcessed))
+                        emitSideEffect(PayrollEffect.ShowToast(StringMessage.AllMatchesProcessed))
                         delay(AppConstants.Timing.AUTO_RECALC_DELAY_MS)
                         handleAction(PayrollAction.CalculatePayroll)
                     }
                 }
                 is MatchConfirmationUseCase.ConfirmationResult.Error -> {
-                    emitSideEffect(PayrollEffect.ShowError(result.message))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(result.message)))
                 }
                 else -> {}
             }
@@ -345,7 +346,7 @@ class PayrollViewModel(
                 is ClientQuickAddUseCase.QuickAddResult.Success -> {
                     emitSideEffect(
                         PayrollEffect.ShowToast(
-                            Strings.Payroll.clientAddSuccess.format(result.clientName, price, employeePrice, companyPrice)
+                            StringMessage.ClientAddSuccess(result.clientName, price, employeePrice, companyPrice)
                         )
                     )
                     emitSideEffect(PayrollEffect.ClientAdded(result.clientName))
@@ -357,7 +358,7 @@ class PayrollViewModel(
                             addedClients = currentState.addedClients - name
                         )
                     }
-                    emitSideEffect(PayrollEffect.ShowError("${Strings.Payroll.clientAddFailed}: ${result.message}"))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.clientAddFailed}: ${result.message}")))
                     emitSideEffect(PayrollEffect.ClientAddFailed(result.clientName, result.message))
                 }
             }
@@ -370,7 +371,7 @@ class PayrollViewModel(
     private fun syncDatabase() {
         viewModelScope.launch {
             try {
-                emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.syncingDatabase))
+                emitSideEffect(PayrollEffect.ShowToast(StringMessage.SyncingDatabase))
 
                 val result = databaseSyncService.syncFromSheets()
 
@@ -396,7 +397,7 @@ class PayrollViewModel(
 
                     emitSideEffect(
                         PayrollEffect.ShowToast(
-                            Strings.Payroll.syncCompleteWithStats.format(
+                            StringMessage.SyncComplete(
                                 response.employeesInserted,
                                 response.employeesUpdated,
                                 response.clientsInserted,
@@ -420,7 +421,7 @@ class PayrollViewModel(
                     }
 
                     emitSideEffect(
-                        PayrollEffect.ShowError("${Strings.Payroll.syncError}: ${error.message}")
+                        PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.syncError}: ${error.message}"))
                     )
                 }
             } catch (e: Exception) {
@@ -437,7 +438,7 @@ class PayrollViewModel(
                     )
                 }
 
-                emitSideEffect(PayrollEffect.ShowError("${Strings.Payroll.syncError}: ${e.message}"))
+                emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.syncError}: ${e.message}")))
             }
         }
     }
@@ -456,7 +457,7 @@ class PayrollViewModel(
                                 error = null
                             )
                         }
-                        emitSideEffect(PayrollEffect.ShowToast(Strings.Success.employeesLoaded.format(result.data.size)))
+                        emitSideEffect(PayrollEffect.ShowToast(StringMessage.EmployeesLoaded(result.data.size)))
                     }
                     is RepositoryResult.Error -> {
                         updateState { currentState ->
@@ -488,13 +489,13 @@ class PayrollViewModel(
                         if (clientCount > 0) {
                             emitSideEffect(
                                 PayrollEffect.ShowToast(
-                                    Strings.Payroll.employeeSelectedWithClients.format(employee.name, clientCount)
+                                    StringMessage.EmployeeSelectedWithClients(employee.name, clientCount)
                                 )
                             )
                         } else {
                             emitSideEffect(
                                 PayrollEffect.ShowError(
-                                    Strings.Payroll.employeeHasNoClients.format(employee.name)
+                                    StringMessage.CustomError(Strings.Payroll.employeeHasNoClients.format(employee.name))
                                 )
                             )
                         }
@@ -502,13 +503,13 @@ class PayrollViewModel(
                     is RepositoryResult.Error -> {
                         emitSideEffect(
                             PayrollEffect.ShowError(
-                                Strings.Payroll.errorCheckingClients.format(employee.name)
+                                StringMessage.CustomError(Strings.Payroll.errorCheckingClients.format(employee.name))
                             )
                         )
                     }
                 }
             } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError(Strings.Payroll.errorValidatingEmployee))
+                emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(Strings.Payroll.errorValidatingEmployee)))
             }
         }
     }
@@ -534,7 +535,7 @@ class PayrollViewModel(
                     daysDifference > AppConstants.DateRange.LARGE_DATE_RANGE_WARNING_DAYS -> {
                         // Show warning but allow calculation
                         emitSideEffect(
-                            PayrollEffect.ShowToast(Strings.Payroll.largeDateRangeWarning)
+                            PayrollEffect.ShowToast(StringMessage.LargeDateRangeWarning)
                         )
                         state.copy(error = null)
                     }
@@ -572,7 +573,7 @@ class PayrollViewModel(
         val endDate = state.endDate ?: return
 
         viewModelScope.launch {
-            emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.startingCalculation))
+            emitSideEffect(PayrollEffect.ShowToast(StringMessage.StartingCalculation))
 
             when (val result = payrollCalculationUseCase(employee, startDate, endDate)) {
                 is PayrollCalculationUseCase.CalculationResult.Success -> {
@@ -589,7 +590,7 @@ class PayrollViewModel(
                         }
                         emitSideEffect(
                             PayrollEffect.ShowToast(
-                                Strings.Payroll.uncertainMatchesFound.format(uncertainMatches.size)
+                                StringMessage.UncertainMatchesFound(uncertainMatches.size)
                             )
                         )
                     } else {
@@ -604,7 +605,7 @@ class PayrollViewModel(
                         val summary = result.payrollResponse.summary
                         emitSideEffect(
                             PayrollEffect.ShowToast(
-                                Strings.Payroll.calculationComplete.format(summary.totalSessions, summary.totalRevenue.toString())
+                                StringMessage.CalculationComplete(summary.totalSessions, summary.totalRevenue)
                             )
                         )
                     }
@@ -616,7 +617,7 @@ class PayrollViewModel(
                             error = "${Strings.Payroll.calculationError}: ${result.message}"
                         )
                     }
-                    emitSideEffect(PayrollEffect.ShowError("${Strings.Payroll.calculationError}: ${result.message}"))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.calculationError}: ${result.message}")))
                 }
             }
         }
@@ -631,12 +632,12 @@ class PayrollViewModel(
                 is ExportResult.Success -> {
                     emitSideEffect(
                         PayrollEffect.ShowToast(
-                            Strings.Payroll.pdfCreated.format(exportResult.filePath)
+                            StringMessage.PdfCreated(exportResult.filePath)
                         )
                     )
                 }
                 is ExportResult.Error -> {
-                    emitSideEffect(PayrollEffect.ShowError("${Strings.Payroll.pdfExportError}: ${exportResult.message}"))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.pdfExportError}: ${exportResult.message}")))
                 }
             }
         }
@@ -651,12 +652,12 @@ class PayrollViewModel(
                 is ExportResult.Success -> {
                     emitSideEffect(
                         PayrollEffect.ShowToast(
-                            Strings.Payroll.excelCreated.format(exportResult.filePath)
+                            StringMessage.ExcelCreated(exportResult.filePath)
                         )
                     )
                 }
                 is ExportResult.Error -> {
-                    emitSideEffect(PayrollEffect.ShowError("${Strings.Payroll.excelExportError}: ${exportResult.message}"))
+                    emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.excelExportError}: ${exportResult.message}")))
                 }
             }
         }
@@ -664,7 +665,7 @@ class PayrollViewModel(
 
     fun confirmAndSyncToSheets(payrollId: String) {
         // TODO: Implement Sheets sync for local mode
-        emitSideEffect(PayrollEffect.ShowError(Strings.Payroll.sheetsSyncNotImplemented))
+        emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError(Strings.Payroll.sheetsSyncNotImplemented)))
     }
 
     private fun emitSideEffect(effect: PayrollEffect) {
@@ -676,7 +677,10 @@ class PayrollViewModel(
                 updateState { currentState ->
                     currentState.copy(
                         showErrorDialog = true,
-                        errorDialogMessage = effect.error
+                        errorDialogMessage = when (val msg = effect.message) {
+                            is StringMessage.CustomError -> msg.message
+                            else -> "Error" // Temp - will be formatted in UI
+                        }
                     )
                 }
             }
@@ -742,7 +746,7 @@ class PayrollViewModel(
         viewModelScope.launch {
             try {
                 Logger.debug("PayrollViewModel", "Starting refresh process")
-                emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.refreshingData))
+                emitSideEffect(PayrollEffect.ShowToast(StringMessage.RefreshingData))
 
                 // Reload employees from database
                 Logger.debug("PayrollViewModel", "Loading employees...")
@@ -755,14 +759,14 @@ class PayrollViewModel(
 
                     // Retry payroll calculation if it failed
                     if (currentState.startDate != null && currentState.endDate != null) {
-                        emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.retryingCalculation))
+                        emitSideEffect(PayrollEffect.ShowToast(StringMessage.RetryingCalculation))
                         handleAction(PayrollAction.CalculatePayroll)
                     }
                 }
 
-                emitSideEffect(PayrollEffect.ShowToast(Strings.Payroll.refreshComplete))
+                emitSideEffect(PayrollEffect.ShowToast(StringMessage.RefreshComplete))
             } catch (e: Exception) {
-                emitSideEffect(PayrollEffect.ShowError("${Strings.Payroll.refreshError}: ${e.message}"))
+                emitSideEffect(PayrollEffect.ShowError(StringMessage.CustomError("${Strings.Payroll.refreshError}: ${e.message}")))
             }
         }
     }
