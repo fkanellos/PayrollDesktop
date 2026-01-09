@@ -8,6 +8,8 @@ import com.payroll.app.desktop.core.di.viewModelModule
 import com.payroll.app.desktop.di.localModule
 import com.payroll.app.desktop.google.GoogleCredentialProvider
 import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
+import org.koin.java.KoinJavaComponent.get
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.channels.FileLock
@@ -24,32 +26,42 @@ fun main() {
         exitProcess(1)
     }
 
-    val randomAccessFile: RandomAccessFile
-    val lock: FileLock
+    // 🔥 FIX FILE HANDLE LEAK: Proper resource management with lateinit vars
+    lateinit var randomAccessFile: RandomAccessFile
+    lateinit var lock: FileLock
 
     try {
         randomAccessFile = RandomAccessFile(lockFile, "rw")
-        val acquiredLock: FileLock? = randomAccessFile.channel.tryLock()
 
-        if (acquiredLock == null) {
-            randomAccessFile.close()
-            println("❌ Payroll Desktop is already running!")
-            println("   Close the existing instance before starting a new one.")
-            exitProcess(1)
-        }
+        try {
+            val acquiredLock: FileLock? = randomAccessFile.channel.tryLock()
 
-        lock = acquiredLock
-
-        // Register shutdown hook to release lock
-        Runtime.getRuntime().addShutdownHook(Thread {
-            try {
-                lock.release()
+            if (acquiredLock == null) {
+                // Another instance is running
                 randomAccessFile.close()
-                lockFile.delete()
-            } catch (e: Exception) {
-                System.err.println("⚠️ Warning: Failed to release lock: ${e.message}")
+                println("❌ Payroll Desktop is already running!")
+                println("   Close the existing instance before starting a new one.")
+                exitProcess(1)
             }
-        })
+
+            lock = acquiredLock
+
+            // Register shutdown hook to release lock
+            Runtime.getRuntime().addShutdownHook(Thread {
+                try {
+                    lock.release()
+                    randomAccessFile.close()
+                    lockFile.delete()
+                } catch (e: Exception) {
+                    System.err.println("⚠️ Warning: Failed to release lock: ${e.message}")
+                }
+            })
+
+        } catch (lockException: Exception) {
+            // Ensure file is closed if lock acquisition fails
+            randomAccessFile.close()
+            throw lockException
+        }
 
     } catch (e: Exception) {
         println("❌ CRITICAL: Could not create lock file: ${e.message}")
@@ -74,7 +86,20 @@ fun main() {
         }
 
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = {
+                // 🔥 FIX RESOURCE LEAK: Shutdown HTTP transport before exit
+                try {
+                    val credentialProvider = get<GoogleCredentialProvider>(GoogleCredentialProvider::class.java)
+                    credentialProvider.shutdown()
+                } catch (e: Exception) {
+                    System.err.println("⚠️ Warning: Failed to shutdown Google transport: ${e.message}")
+                }
+
+                // Cleanup Koin
+                stopKoin()
+
+                exitApplication()
+            },
             title = "Payroll Desktop",
         ) {
             App()

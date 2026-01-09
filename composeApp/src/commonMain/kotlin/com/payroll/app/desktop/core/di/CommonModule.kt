@@ -1,19 +1,27 @@
 package com.payroll.app.desktop.core.di
 
-import com.payroll.app.desktop.data.repositories.ClientRepository
-import com.payroll.app.desktop.data.repositories.EmployeeRepository
-import com.payroll.app.desktop.data.repositories.PayrollRepository
-import com.payroll.app.desktop.domain.service.DatabaseSyncService
-import com.payroll.app.desktop.presentation.client.ClientManagementViewModel
-import com.payroll.app.desktop.presentation.employee.EmployeeManagementViewModel
-import com.payroll.app.desktop.presentation.payroll.PayrollViewModel
+import com.payroll.app.desktop.domain.service.ClientMatchingService
+import com.payroll.app.desktop.domain.service.PayrollCalculationService
 import org.koin.dsl.module
 
 /**
  * Common Koin DI module for shared dependencies
- * Repositories are now expect/actual and configured in platform modules
- * ViewModels are defined in ViewModelModule
+ * Contains platform-independent services and utilities
+ *
+ * Platform-specific dependencies (repositories, database, Google APIs) are in:
+ * - jvmMain/localModule
+ * - androidMain/androidModule (future)
+ * - iosMain/iosModule (future)
  */
 val commonModule = module {
-    // Empty - all dependencies are platform-specific (localModule) or in ViewModelModule
+    // 🔥 FIX ARCHITECTURE SMELL: Populate with shared services
+
+    // Core business logic services - platform independent
+    factory { ClientMatchingService() }
+    factory { PayrollCalculationService(clientMatchingService = get()) }
+
+    // Future shared services can be added here:
+    // - Validators (ClientValidator, EmployeeValidator)
+    // - UseCases (if we extract from services)
+    // - Mappers (domain <-> presentation)
 }

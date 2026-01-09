@@ -1,5 +1,6 @@
 package com.payroll.app.desktop.domain.service
 
+import com.payroll.app.desktop.core.base.RepositoryResult
 import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.data.repositories.LocalClientRepository
 import com.payroll.app.desktop.data.repositories.LocalEmployeeRepository
@@ -182,6 +183,19 @@ actual class DatabaseSyncService(
             val employees = employeeRepository.getAll()
             Logger.info(TAG, "Found ${employees.size} employees to push")
 
+            // 🔥 FIX N+1: Batch fetch all clients once, then group by employee
+            val allClientsResult = clientRepository.getAll()
+            val allClients: List<Client> = when (allClientsResult) {
+                is RepositoryResult.Success<*> -> allClientsResult.data as? List<Client> ?: emptyList()
+                is RepositoryResult.Error -> {
+                    Logger.warning(TAG, "Failed to batch load clients: ${allClientsResult.exception.message}")
+                    emptyList()
+                }
+                else -> emptyList()
+            }
+            val clientsByEmployee = allClients.groupBy { it.employeeId }
+            Logger.info(TAG, "Loaded ${allClients.size} clients in batch (avoid N+1 queries)")
+
             for (employee in employees) {
                 // Push employee to "Employees" sheet
                 when (val empResult = sheetsService.updateEmployeeInSheet(employee)) {
@@ -200,7 +214,7 @@ actual class DatabaseSyncService(
 
                 // Push all clients for this employee using BATCH UPDATE
                 if (employee.sheetName.isNotBlank()) {
-                    val clients = clientRepository.getByEmployeeId(employee.id)
+                    val clients = clientsByEmployee[employee.id] ?: emptyList()
                     Logger.info(TAG, "📦 Batch updating ${clients.size} clients for ${employee.name}...")
 
                     val pushedCount = sheetsService.batchUpdateClientsInSheet(clients, employee.sheetName)

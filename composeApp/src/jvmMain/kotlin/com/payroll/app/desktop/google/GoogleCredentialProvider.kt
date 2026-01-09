@@ -216,4 +216,17 @@ class GoogleCredentialProvider(
      * Check if credentials are set up
      */
     fun hasCredentials(): Boolean = secureStore.hasCredentials()
+
+    /**
+     * 🔥 FIX RESOURCE LEAK: Shutdown HTTP transport to release resources
+     * Should be called on app shutdown
+     */
+    fun shutdown() {
+        try {
+            httpTransport.shutdown()
+            Logger.info(TAG, "HTTP transport shutdown successfully")
+        } catch (e: Exception) {
+            Logger.warning(TAG, "Failed to shutdown HTTP transport: ${e.message}")
+        }
+    }
 }
