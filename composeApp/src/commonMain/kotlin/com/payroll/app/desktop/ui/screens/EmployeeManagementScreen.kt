@@ -3,6 +3,12 @@ package com.payroll.app.desktop.ui.screens
 import com.payroll.app.desktop.core.logging.Logger
 import com.payroll.app.desktop.core.strings.Strings
 import com.payroll.app.desktop.core.utils.format
+import com.payroll.app.desktop.core.utils.parseHexColor
+import com.payroll.app.desktop.ui.components.shared.errors.ErrorBanner
+import com.payroll.app.desktop.ui.components.shared.loading.LoadingIndicator
+import com.payroll.app.desktop.ui.components.shared.empty.EmptyStateView
+import com.payroll.app.desktop.ui.components.shared.search.SearchBar
+import com.payroll.app.desktop.ui.components.management.employees.EmployeeFormDialog
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -29,32 +35,6 @@ import com.payroll.app.desktop.presentation.employee.EmployeeManagementViewModel
 import com.payroll.app.desktop.ui.theme.PayrollColors
 import com.payroll.app.desktop.ui.theme.PayrollTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
-
-/**
- * Parse hex color string to Color
- * Supports formats: #RRGGBB, #AARRGGBB, RRGGBB, AARRGGBB
- */
-private fun parseHexColor(hexColor: String): Color {
-    return try {
-        val cleanHex = hexColor.removePrefix("#")
-        when (cleanHex.length) {
-            6 -> Color(
-                red = cleanHex.substring(0, 2).toInt(16) / 255f,
-                green = cleanHex.substring(2, 4).toInt(16) / 255f,
-                blue = cleanHex.substring(4, 6).toInt(16) / 255f
-            )
-            8 -> Color(
-                alpha = cleanHex.substring(0, 2).toInt(16) / 255f,
-                red = cleanHex.substring(2, 4).toInt(16) / 255f,
-                green = cleanHex.substring(4, 6).toInt(16) / 255f,
-                blue = cleanHex.substring(6, 8).toInt(16) / 255f
-            )
-            else -> PayrollColors.Primary
-        }
-    } catch (e: Exception) {
-        PayrollColors.Primary
-    }
-}
 
 /**
  * Employee Management Screen
@@ -101,83 +81,42 @@ fun EmployeeManagementScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Search Box
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = { viewModel.handleAction(EmployeeManagementAction.SetSearchQuery(it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(Strings.Common.search) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        tint = PayrollColors.TextSecondary
-                    )
-                },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.handleAction(EmployeeManagementAction.SetSearchQuery("")) }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear")
-                        }
-                    }
-                },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PayrollColors.Primary,
-                    unfocusedBorderColor = PayrollColors.DividerColor
-                ),
-                shape = RoundedCornerShape(8.dp)
+            SearchBar(
+                query = uiState.searchQuery,
+                onQueryChange = { viewModel.handleAction(EmployeeManagementAction.SetSearchQuery(it)) },
+                placeholder = Strings.Common.search
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Error display
             uiState.error?.let { errorMsg ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = PayrollColors.Error.copy(alpha = 0.1f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = PayrollColors.Error
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = errorMsg,
-                            color = PayrollColors.Error,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { viewModel.handleAction(EmployeeManagementAction.ClearError) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
-                        }
-                    }
-                }
+                ErrorBanner(
+                    message = errorMsg,
+                    onDismiss = { viewModel.handleAction(EmployeeManagementAction.ClearError) }
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Loading indicator
             if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = PayrollColors.Primary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(Strings.Info.loadingEmployees, color = PayrollColors.TextSecondary)
-                    }
-                }
+                LoadingIndicator(message = Strings.Info.loadingEmployees)
             } else if (uiState.filteredEmployees.isEmpty()) {
-                EmptyEmployeesView(
-                    hasSearchQuery = uiState.searchQuery.isNotEmpty(),
-                    onAddClick = { viewModel.handleAction(EmployeeManagementAction.ShowAddDialog) }
-                )
+                if (uiState.searchQuery.isNotEmpty()) {
+                    EmptyStateView(
+                        icon = Icons.Default.SearchOff,
+                        title = "Δεν βρέθηκαν αποτελέσματα",
+                        subtitle = "Δοκιμάστε διαφορετικούς όρους αναζήτησης"
+                    )
+                } else {
+                    EmptyStateView(
+                        icon = Icons.Default.PersonOff,
+                        title = "Δεν υπάρχουν εργαζόμενοι",
+                        subtitle = "Προσθέστε εργαζόμενους για να ξεκινήσετε",
+                        actionLabel = Strings.EmployeeManagement.addEmployee,
+                        onActionClick = { viewModel.handleAction(EmployeeManagementAction.ShowAddDialog) }
+                    )
+                }
             } else {
                 EmployeesTable(
                     employees = uiState.filteredEmployees,
@@ -300,51 +239,6 @@ private fun EmployeeManagementHeader(
                 Icon(Icons.Default.Add, contentDescription = Strings.EmployeeManagement.addEmployee)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(Strings.EmployeeManagement.addEmployee)
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyEmployeesView(
-    hasSearchQuery: Boolean,
-    onAddClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Icon(
-                if (hasSearchQuery) Icons.Default.SearchOff else Icons.Default.PersonOff,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = PayrollColors.TextSecondary
-            )
-            Text(
-                text = if (hasSearchQuery) "Δεν βρέθηκαν αποτελέσματα" else "Δεν υπάρχουν εργαζόμενοι",
-                fontSize = 18.sp,
-                color = PayrollColors.TextSecondary
-            )
-            Text(
-                text = if (hasSearchQuery) "Δοκιμάστε διαφορετικούς όρους αναζήτησης" else "Προσθέστε εργαζόμενους για να ξεκινήσετε",
-                fontSize = 14.sp,
-                color = PayrollColors.TextSecondary
-            )
-            if (!hasSearchQuery) {
-                Button(
-                    onClick = onAddClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PayrollColors.Primary
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = Strings.EmployeeManagement.addEmployee)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(Strings.EmployeeManagement.addEmployee)
-                }
             }
         }
     }
@@ -517,160 +411,7 @@ private fun EmployeeRow(
     }
 }
 
-@Composable
-private fun EmployeeFormDialog(
-    employee: Employee?,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (Employee) -> Unit
-) {
-    var name by remember { mutableStateOf(employee?.name ?: "") }
-    var email by remember { mutableStateOf(employee?.email ?: "") }
-    var calendarId by remember { mutableStateOf(employee?.calendarId ?: "") }
-    var sheetName by remember { mutableStateOf(employee?.sheetName ?: "") }
-    var supervisionPrice by remember { mutableStateOf(employee?.supervisionPrice?.toString() ?: "0") }
-    var color by remember { mutableStateOf(employee?.color ?: "#2196F3") }
-
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var calendarIdError by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text(if (employee == null) Strings.DialogTitles.addEmployee else Strings.DialogTitles.editEmployee) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.width(500.dp)
-            ) {
-                // Name
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = {
-                        name = it
-                        nameError = null
-                    },
-                    label = { Text(Strings.EmployeeManagement.employeeName) },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = nameError != null,
-                    enabled = !isSaving,
-                    supportingText = nameError?.let { { Text(it, color = PayrollColors.Error) } }
-                )
-
-                // Email
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text(Strings.EmployeeManagement.email) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving
-                )
-
-                // Calendar ID
-                OutlinedTextField(
-                    value = calendarId,
-                    onValueChange = {
-                        calendarId = it
-                        calendarIdError = null
-                    },
-                    label = { Text(Strings.EmployeeManagement.calendarId) },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = calendarIdError != null,
-                    enabled = !isSaving,
-                    supportingText = calendarIdError?.let { { Text(it, color = PayrollColors.Error) } }
-                )
-
-                // Sheet Name
-                OutlinedTextField(
-                    value = sheetName,
-                    onValueChange = { sheetName = it },
-                    label = { Text(Strings.EmployeeManagement.sheetName) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving
-                )
-
-                // Supervision Price
-                OutlinedTextField(
-                    value = supervisionPrice,
-                    onValueChange = { supervisionPrice = it },
-                    label = { Text(Strings.EmployeeManagement.supervisionPrice) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving
-                )
-
-                // Color picker hint
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = color,
-                        onValueChange = { color = it },
-                        label = { Text(Strings.EmployeeManagement.color) },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isSaving
-                    )
-
-                    Surface(
-                        modifier = Modifier.size(40.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = parseHexColor(color),
-                        border = BorderStroke(1.dp, PayrollColors.DividerColor)
-                    ) {}
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    // Validate
-                    var hasError = false
-
-                    if (name.isBlank()) {
-                        nameError = "Το όνομα είναι υποχρεωτικό"
-                        hasError = true
-                    }
-
-                    if (calendarId.isBlank()) {
-                        calendarIdError = "Το Calendar ID είναι υποχρεωτικό"
-                        hasError = true
-                    }
-
-                    if (!hasError) {
-                        val newEmployee = Employee(
-                            id = employee?.id ?: "",
-                            name = name.trim(),
-                            email = email.trim(),
-                            calendarId = calendarId.trim(),
-                            sheetName = sheetName.trim(),
-                            supervisionPrice = supervisionPrice.toDoubleOrNull() ?: 0.0,
-                            color = color.trim()
-                        )
-                        onSave(newEmployee)
-                    }
-                },
-                enabled = !isSaving && name.isNotBlank() && calendarId.isNotBlank()
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text(if (isSaving) Strings.Common.loading else Strings.Common.save)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isSaving
-            ) {
-                Text(Strings.Common.cancel)
-            }
-        }
-    )
-}
+// EmployeeFormDialog has been extracted to EmployeeFormDialog.kt
 
 @Preview
 @Composable
